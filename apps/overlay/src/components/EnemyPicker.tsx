@@ -20,7 +20,7 @@ export function EnemyPicker({ heroes, selected, onToggle, max = 5 }: EnemyPicker
           return (
             <button
               key={h.id}
-              aria-pressed={isSelected}
+              aria-pressed={isSelected ? 'true' : 'false'}
               disabled={atLimit}
               onClick={() => onToggle(h.id)}
               style={{

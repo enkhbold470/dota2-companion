@@ -23,8 +23,9 @@ export default function App() {
   const clock = state?.clock ?? null;
   const dn = clock === null ? null : dayNight(clock);
   const runes = clock === null ? [] : runeTimers(clock);
+  // clock ?? 0: when clock is null we haven't connected yet; roshKilledAt is also null so status is 'unknown'
   const rosh = roshanTimer({ killedAtClock: roshKilledAt }, clock ?? 0);
-  const grade = useMemo(() => gradeEconomy(state?.economy.gpm ?? null, role), [state, role]);
+  const grade = useMemo(() => gradeEconomy(state?.economy.gpm ?? null, role), [state?.economy.gpm, role]);
 
   const toggleEnemy = (id: number) =>
     setEnemies((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 5 ? [...prev, id] : prev);

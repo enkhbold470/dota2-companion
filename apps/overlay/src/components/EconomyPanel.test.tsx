@@ -10,5 +10,6 @@ it('renders gpm and rating', () => {
 
 it('handles unknown gracefully', () => {
   render(<EconomyPanel grade={gradeEconomy(null, 'core')} />);
-  expect(screen.getByText(/—|unknown/i)).toBeInTheDocument();
+  expect(screen.getByText(/—/)).toBeInTheDocument();
+  expect(screen.getByText(/unknown/i)).toBeInTheDocument();
 });

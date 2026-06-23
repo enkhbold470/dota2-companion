@@ -14,6 +14,7 @@ export function useGsiSocket(url = 'ws://127.0.0.1:53000/ws') {
       ws = new WebSocket(url);
       ws.onopen = () => setConnected(true);
       ws.onmessage = (ev) => {
+        // The listener only sends NormalizedState objects; cast is safe as long as server contract holds.
         try { setState(JSON.parse(ev.data as string) as NormalizedState); } catch { /* ignore malformed */ }
       };
       ws.onclose = () => {
