@@ -15,6 +15,7 @@ export const DEFAULT_RUNE_SCHEDULE: RuneSchedule = {
 export interface RuneTimer {
   type: RuneType;
   nextSpawn: number;
+  /** 0 means spawning now; entry is absent once past. */
   secondsUntil: number;
 }
 
@@ -36,7 +37,7 @@ export function runeTimers(
   const power = nextPeriodic(clock, schedule.power.start, schedule.power.interval);
   out.push({ type: 'power', nextSpawn: power, secondsUntil: power - clock });
 
-  const nextWater = schedule.water.find((t) => t >= clock);
+  const nextWater = [...schedule.water].sort((a, b) => a - b).find((t) => t >= clock);
   if (nextWater !== undefined) {
     out.push({ type: 'water', nextSpawn: nextWater, secondsUntil: nextWater - clock });
   }

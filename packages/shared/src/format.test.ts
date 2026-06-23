@@ -11,4 +11,7 @@ describe('formatClock', () => {
     expect(formatClock(-30)).toBe('-0:30');
     expect(formatClock(-95)).toBe('-1:35');
   });
+  it('rounds sub-second negative values to 0:00 without a minus sign', () => {
+    expect(formatClock(-0.9)).toBe('0:00');
+  });
 });
