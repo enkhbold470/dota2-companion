@@ -1,0 +1,20 @@
+[
+  {
+    "map": { "matchid": "7777", "clock_time": 95, "daytime": true, "game_state": "DOTA_GAMERULES_STATE_GAME_IN_PROGRESS" },
+    "player": { "gold": 800, "net_worth": 2600, "gpm": 480, "xpm": 520, "last_hits": 42 },
+    "hero": { "id": 26, "level": 6, "alive": true, "respawn_seconds": 0, "has_aghanims_shard": false },
+    "items": { "slot0": { "name": "item_boots" }, "slot1": { "name": "item_magic_wand" }, "slot2": { "name": "empty" } }
+  },
+  {
+    "map": { "matchid": "7777", "clock_time": 305, "daytime": false, "game_state": "DOTA_GAMERULES_STATE_GAME_IN_PROGRESS" },
+    "player": { "gold": 1500, "net_worth": 4200, "gpm": 540, "xpm": 610, "last_hits": 88 },
+    "hero": { "id": 26, "level": 11, "alive": true, "respawn_seconds": 0, "has_aghanims_shard": true },
+    "items": { "slot0": { "name": "item_power_treads" }, "slot1": { "name": "item_magic_wand" }, "slot2": { "name": "item_blink" } }
+  },
+  {
+    "map": { "matchid": "7777", "clock_time": 640, "daytime": true, "game_state": "DOTA_GAMERULES_STATE_GAME_IN_PROGRESS" },
+    "player": { "gold": 350, "net_worth": 7100, "gpm": 510, "xpm": 660, "last_hits": 142 },
+    "hero": { "id": 26, "level": 16, "alive": false, "respawn_seconds": 28, "has_aghanims_shard": true, "has_aghanims_scepter": true },
+    "items": { "slot0": { "name": "item_power_treads" }, "slot1": { "name": "item_blink" }, "slot2": { "name": "item_black_king_bar" } }
+  }
+]
