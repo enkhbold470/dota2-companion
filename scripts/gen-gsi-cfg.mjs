@@ -1,0 +1,36 @@
+import { writeFile } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+
+const token = process.env.GSI_TOKEN ?? randomBytes(12).toString('hex');
+const port = process.env.PORT ?? 53000;
+
+const cfg = `"dota2-companion"
+{
+  "uri"       "http://127.0.0.1:${port}/"
+  "timeout"   "5.0"
+  "buffer"    "0.1"
+  "throttle"  "0.1"
+  "heartbeat" "30.0"
+  "data"
+  {
+    "provider"  "1"
+    "map"       "1"
+    "player"    "1"
+    "hero"      "1"
+    "abilities" "1"
+    "items"     "1"
+  }
+  "auth" { "token" "${token}" }
+}
+`;
+
+const outName = 'gamestate_integration_dota2-companion.cfg';
+await writeFile(outName, cfg, 'utf8');
+await writeFile('.gsi-token', token, 'utf8');
+
+console.log(`Wrote ${outName} and .gsi-token (token: ${token}).`);
+console.log('Copy the .cfg into your Dota 2 install:');
+console.log('  macOS:   ~/Library/Application Support/Steam/steamapps/common/dota 2 beta/game/dota/cfg/gamestate_integration/');
+console.log('  Windows: <Steam>\\steamapps\\common\\dota 2 beta\\game\\dota\\cfg\\gamestate_integration\\');
+console.log('Then launch the listener with this token:');
+console.log(`  GSI_TOKEN=${token} pnpm listener`);

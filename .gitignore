@@ -4,3 +4,4 @@ dist/
 .env
 .gsi-token
 coverage/
+gamestate_integration_*.cfg
