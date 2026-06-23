@@ -15,7 +15,11 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
   app.get('/health', async () => ({ ok: true }));
 
   app.post('/', async (req, reply) => {
-    const body = (req.body ?? {}) as GsiPayload;
+    const raw = req.body;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      return reply.code(400).send();
+    }
+    const body = raw as GsiPayload;
     if (!isAuthorized(body, opts.token)) {
       return reply.code(401).send();
     }

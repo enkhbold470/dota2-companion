@@ -36,4 +36,13 @@ describe('listener server', () => {
     expect(res.json()).toEqual({ ok: true });
     await app.close();
   });
+
+  it('returns 400 for non-object body', async () => {
+    const app = buildServer({ token: 'secret', hub: new Hub() });
+    const res = await app.inject({
+      method: 'POST', url: '/', headers: { 'content-type': 'application/json' }, body: 'null',
+    });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
 });
