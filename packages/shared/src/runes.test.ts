@@ -26,4 +26,9 @@ describe('runeTimers', () => {
     const bounty = t.find((r) => r.type === 'bounty');
     expect(bounty).toEqual({ type: 'bounty', nextSpawn: 0, secondsUntil: 15 });
   });
+
+  it('finds the nearest water spawn even if the schedule array is unsorted', () => {
+    const t = runeTimers(100, { ...DEFAULT_RUNE_SCHEDULE, water: [240, 120] });
+    expect(t.find((r) => r.type === 'water')).toEqual({ type: 'water', nextSpawn: 120, secondsUntil: 20 });
+  });
 });
