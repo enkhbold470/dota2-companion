@@ -5,3 +5,9 @@ dist/
 .gsi-token
 coverage/
 gamestate_integration_*.cfg
+
+# neurofocus logger: local session data + token (never commit neural data)
+neurofocus/.neurofocus-token
+neurofocus/session-*.jsonl
+neurofocus/*-summary.json
+__pycache__/
