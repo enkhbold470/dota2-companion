@@ -1,4 +1,6 @@
 export * from './types';
+export * from './coaching-types';
+export * from './data';
 export * from './auth';
 export * from './normalize';
 export * from './timers';

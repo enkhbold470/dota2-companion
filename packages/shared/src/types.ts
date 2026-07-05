@@ -37,16 +37,36 @@ export interface GsiHero {
 
 export interface GsiItem { name: string; charges?: number }
 
+export interface GsiAbility {
+  name?: string;
+  level?: number;
+  can_cast?: boolean;
+  passive?: boolean;
+  ability_active?: boolean;
+  cooldown?: number;
+  ultimate?: boolean;
+}
+
 export interface GsiPayload {
   auth?: GsiAuth;
   map?: GsiMap;
   player?: GsiPlayer;
   hero?: GsiHero;
+  abilities?: Record<string, GsiAbility>;
   items?: Record<string, GsiItem>;
 }
 
 // ---- Normalized state the listener broadcasts and the UI consumes ----
 export type Role = 'core' | 'support' | 'unknown';
+
+export interface NormalizedAbility {
+  name: string;
+  level: number;
+  canCast: boolean | null;
+  cooldown: number | null;
+  passive: boolean;
+  ultimate: boolean;
+}
 
 export interface NormalizedState {
   matchId: string | null;
@@ -70,6 +90,8 @@ export interface NormalizedState {
     lastHits: number | null;
   };
   items: string[];           // names in item slots 0..8, excluding empty slots
+  hasTp: boolean;            // TP scroll present in the teleport slot
+  abilities: NormalizedAbility[]; // real hero abilities in slot order (cosmetic/talent slots filtered)
 }
 
 export const GAME_IN_PROGRESS = 'DOTA_GAMERULES_STATE_GAME_IN_PROGRESS';
