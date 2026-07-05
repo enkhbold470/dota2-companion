@@ -1,11 +1,13 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
 import { isAuthorized, normalizeGsi, type GsiPayload } from '@dc/shared';
+import { registerCoachRoute } from './coach-route';
 import type { Hub } from './hub';
 
 export interface ServerOptions {
   token: string;
   hub: Hub;
+  openaiKey?: string | null;
 }
 
 export function buildServer(opts: ServerOptions): FastifyInstance {
@@ -13,6 +15,8 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
   app.register(websocket);
 
   app.get('/health', async () => ({ ok: true }));
+
+  registerCoachRoute(app, { apiKey: opts.openaiKey ?? null });
 
   app.post('/', async (req, reply) => {
     const raw = req.body;

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(
-  path.join(fileURLToPath(new URL('..', import.meta.url)), 'apps/overlay/package.json'),
+  path.join(fileURLToPath(new URL('..', import.meta.url)), 'package.json'),
 );
 
 const abilities = require('dotaconstants/build/abilities.json');
