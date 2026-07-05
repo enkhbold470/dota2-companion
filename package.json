@@ -10,7 +10,8 @@
     "listener": "pnpm --filter @dc/listener dev",
     "overlay": "pnpm --filter @dc/overlay dev",
     "replay": "pnpm --filter @dc/listener replay",
-    "gen-cfg": "node scripts/gen-gsi-cfg.mjs"
+    "gen-cfg": "node scripts/gen-gsi-cfg.mjs",
+    "gen-data": "node scripts/gen-coach-data.mjs"
   },
   "devDependencies": {
     "typescript": "^5.5.0",
