@@ -7,6 +7,7 @@ export interface AskCoachPanelProps {
 
 const NO_KEY_MESSAGE = 'Set OPENAI_API_KEY on the listener to enable AI coaching (GPT-4o).';
 const UNAVAILABLE_MESSAGE = 'Coach unavailable — is the listener running?';
+const UPSTREAM_MESSAGE = 'Coach upstream error — check the OpenAI key/quota on the listener.';
 
 export function AskCoachPanel({ getContext, endpoint = 'http://127.0.0.1:53000/coach' }: AskCoachPanelProps) {
   const [question, setQuestion] = useState('');
@@ -28,6 +29,8 @@ export function AskCoachPanel({ getContext, endpoint = 'http://127.0.0.1:53000/c
         setAnswer(typeof data.answer === 'string' ? data.answer : UNAVAILABLE_MESSAGE);
       } else if (res.status === 501) {
         setAnswer(NO_KEY_MESSAGE);
+      } else if (res.status === 502) {
+        setAnswer(UPSTREAM_MESSAGE);
       } else {
         setAnswer(UNAVAILABLE_MESSAGE);
       }

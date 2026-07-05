@@ -8,8 +8,14 @@ import type {
 import { ITEM_DATA } from './data';
 import { recommendItems } from './items';
 
-function flag(kind: ThreatKind, heroId: number, heroName: string, abilityName: string): ThreatFlag {
-  return { kind, heroId, heroName, abilityName };
+function flag(
+  kind: ThreatKind,
+  heroId: number,
+  heroName: string,
+  abilityName: string,
+  targeted = false,
+): ThreatFlag {
+  return { kind, heroId, heroName, abilityName, targeted };
 }
 
 function report(flags: ThreatFlag[], enemyCount = 5): ThreatReport {
@@ -122,7 +128,7 @@ describe('recommendItems', () => {
 
   it('breaks score ties by putting the cheaper item first', () => {
     const flags = [
-      flag('pierces-bkb', 8, 'Juggernaut', 'Omnislash'),
+      flag('pierces-bkb', 8, 'Juggernaut', 'Omnislash', true),
       flag('invisibility', 32, 'Riki', 'Cloak and Dagger'),
     ];
     const recs = recommendItems(
@@ -151,13 +157,44 @@ describe('recommendItems', () => {
   it('ignores BKB-piercing threats when counting toward BKB', () => {
     const flags = [
       flag('magical-burst', 25, 'Lina', 'Laguna Blade'),
-      flag('pierces-bkb', 25, 'Lina', 'Laguna Blade'),
+      flag('pierces-bkb', 25, 'Lina', 'Laguna Blade', true),
       flag('hard-disable', 26, 'Lion', 'Hex'),
     ];
     const recs = recommendItems(makeInput({ threat: report(flags), clock: 1500 }), ITEM_DATA);
     const keys = recs.map((r) => r.itemKey);
     expect(keys).not.toContain('black_king_bar');
     expect(keys).toContain('sphere');
+  });
+
+  it("recommends Linken's only against single-target BKB-piercers", () => {
+    const aoePiercer = [flag('pierces-bkb', 41, 'Faceless Void', 'Chronosphere', false)];
+    const recs = recommendItems(makeInput({ threat: report(aoePiercer), clock: 1500 }), ITEM_DATA);
+    expect(recs.map((r) => r.itemKey)).not.toContain('sphere');
+
+    const targetedPiercer = [flag('pierces-bkb', 3, 'Bane', "Fiend's Grip", true)];
+    const recs2 = recommendItems(makeInput({ threat: report(targetedPiercer), clock: 1500 }), ITEM_DATA);
+    expect(recs2.map((r) => r.itemKey)).toContain('sphere');
+  });
+
+  it('counts distinct abilities, not flags: a lone double-flagged stun never justifies BKB', () => {
+    const stormHammer = [
+      flag('strong-dispel-debuff', 18, 'Sven', 'Storm Hammer'),
+      flag('hard-disable', 18, 'Sven', 'Storm Hammer'),
+    ];
+    const recs = recommendItems(makeInput({ threat: report(stormHammer) }), ITEM_DATA);
+    expect(recs.map((r) => r.itemKey)).not.toContain('black_king_bar');
+  });
+
+  it('suppresses a recommendation when the upgraded form is owned', () => {
+    const flags = [flag('illusions', 12, 'Phantom Lancer', 'Doppelganger')];
+    const withMjollnir = recommendItems(
+      makeInput({ threat: report(flags), ownedItems: ['item_mjollnir'] }),
+      ITEM_DATA,
+    );
+    expect(withMjollnir.map((r) => r.itemKey)).not.toContain('maelstrom');
+
+    const without = recommendItems(makeInput({ threat: report(flags) }), ITEM_DATA);
+    expect(without.map((r) => r.itemKey)).toContain('maelstrom');
   });
 
   it('dedupes cited abilities and appends +N more past three', () => {
@@ -167,7 +204,7 @@ describe('recommendItems', () => {
     ];
     const mantaRecs = recommendItems(makeInput({ threat: report(mantaFlags) }), ITEM_DATA);
     const manta = mantaRecs.find((r) => r.itemKey === 'manta');
-    expect(manta?.score).toBe(30);
+    expect(manta?.score).toBe(15); // one distinct ability, despite two flags
     expect(manta?.reasons[0]).toBe("Dispels Silencer's Global Silence");
 
     const burstFlags = [

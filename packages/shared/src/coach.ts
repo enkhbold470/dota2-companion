@@ -71,7 +71,8 @@ export function coachTips(input: CoachInput): CoachTip[] {
   }
 
   // ult-online
-  if (hero.level !== null && hero.level >= 6 && hero.level <= 7 && clock !== null && clock <= 660) {
+  if (hero.level !== null && hero.level >= 6 && hero.level <= 7 && clock !== null && clock <= 660
+    && hero.alive !== false) {
     tips.push({
       id: 'ult-online',
       severity: 'info',

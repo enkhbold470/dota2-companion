@@ -73,3 +73,14 @@ it('shows the unavailable message when fetch rejects', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Ask' }));
   expect(await screen.findByText('Coach unavailable — is the listener running?')).toBeInTheDocument();
 });
+
+it('points at the OpenAI key/quota on 502', async () => {
+  const fetchMock = vi.fn().mockResolvedValue(jsonResponse(502, { error: 'upstream' }));
+  vi.stubGlobal('fetch', fetchMock);
+  render(<AskCoachPanel getContext={() => null} />);
+  await userEvent.type(screen.getByRole('textbox'), 'hi');
+  await userEvent.click(screen.getByRole('button', { name: 'Ask' }));
+  expect(
+    await screen.findByText('Coach upstream error — check the OpenAI key/quota on the listener.'),
+  ).toBeInTheDocument();
+});

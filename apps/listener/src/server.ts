@@ -8,6 +8,7 @@ export interface ServerOptions {
   token: string;
   hub: Hub;
   openaiKey?: string | null;
+  coachAllowOrigin?: string;
 }
 
 export function buildServer(opts: ServerOptions): FastifyInstance {
@@ -16,7 +17,7 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
 
   app.get('/health', async () => ({ ok: true }));
 
-  registerCoachRoute(app, { apiKey: opts.openaiKey ?? null });
+  registerCoachRoute(app, { apiKey: opts.openaiKey ?? null, allowOrigin: opts.coachAllowOrigin });
 
   app.post('/', async (req, reply) => {
     const raw = req.body;

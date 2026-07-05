@@ -113,10 +113,11 @@ describe('buildThreatReport classification rules', () => {
     expect(kindsOf('test_network_link', { dname: 'N2' })).not.toContain('hard-disable');
   });
 
-  it('flags hard-disable via duration + hard dispel + unit target fallback', () => {
+  it('flags hard-disable via duration + hard dispel + enemy unit target fallback', () => {
     const hexLike: AbilityData = {
       dname: 'Custom Hex',
       dispellable: 'Strong Dispels Only',
+      targetTeam: 'Enemy',
       behavior: ['Unit Target'],
       attribs: [{ key: 'duration', header: 'DURATION', value: [2, 3] }],
     };
@@ -125,6 +126,7 @@ describe('buildThreatReport classification rules', () => {
     const notUnitTarget: AbilityData = {
       dname: 'Ground Thing',
       dispellable: 'No',
+      targetTeam: 'Enemy',
       behavior: ['Point Target'],
       attribs: [{ key: 'duration', header: 'DURATION', value: [4] }],
     };
@@ -133,17 +135,52 @@ describe('buildThreatReport classification rules', () => {
     const easilyDispelled: AbilityData = {
       dname: 'Weak Debuff',
       dispellable: 'Yes',
+      targetTeam: 'Enemy',
       behavior: ['Unit Target'],
       attribs: [{ key: 'duration', header: 'DURATION', value: [4] }],
     };
     expect(kindsOf('test_weak', easilyDispelled)).not.toContain('hard-disable');
+
+    // Long "durations" are buffs/steals (Spell Steal holds for minutes), not stuns.
+    const longBuff: AbilityData = {
+      dname: 'Stolen Thing',
+      dispellable: 'No',
+      targetTeam: 'Enemy',
+      behavior: ['Unit Target'],
+      attribs: [{ key: 'duration', header: 'DURATION', value: [620] }],
+    };
+    expect(kindsOf('test_long_thing', longBuff)).not.toContain('hard-disable');
+
+    // No targetTeam means we cannot prove it is offensive — no fallback flag.
+    const noTeam: AbilityData = {
+      dname: 'Mystery',
+      dispellable: 'No',
+      behavior: ['Unit Target'],
+      attribs: [{ key: 'duration', header: 'DURATION', value: [3] }],
+    };
+    expect(kindsOf('test_no_team', noTeam)).not.toContain('hard-disable');
+  });
+
+  it('never reads ally-targeted saves as threats', () => {
+    const save: AbilityData = {
+      dname: 'Ally Save',
+      dispellable: 'Strong Dispels Only',
+      targetTeam: 'Friendly',
+      behavior: ['Unit Target'],
+      attribs: [{ key: 'duration', header: 'DURATION', value: [5] }],
+    };
+    expect(kindsOf('test_save', save)).toEqual([]);
   });
 
   it('flags silence by key', () => {
     expect(kindsOf('test_silence', { dname: 'S' })).toContain('silence');
+    expect(kindsOf('silencer_global_silence', { dname: 'S' })).toContain('silence');
     expect(kindsOf('skywrath_mage_ancient_seal', { dname: 'S' })).toContain('silence');
     expect(kindsOf('drow_ranger_gust', { dname: 'S' })).toContain('silence');
     expect(kindsOf('test_gusty_wind', { dname: 'S' })).not.toContain('silence');
+    // 'silencer' the hero prefix contains 'silence' — must not flag his whole kit.
+    expect(kindsOf('silencer_glaives_of_wisdom', { dname: 'S' })).not.toContain('silence');
+    expect(kindsOf('silencer_curse_of_the_silent', { dname: 'S' })).not.toContain('silence');
   });
 
   it('flags invisibility by key', () => {
@@ -151,11 +188,16 @@ describe('buildThreatReport classification rules', () => {
       expect(kindsOf(key, { dname: 'I' })).toContain('invisibility');
     }
     expect(kindsOf('test_walk_fast', { dname: 'I' })).not.toContain('invisibility');
+    // Shadow Dance can't be revealed by detection — recommending Dust vs Slark is wrong.
+    expect(kindsOf('slark_shadow_dance', { dname: 'I' })).not.toContain('invisibility');
   });
 
   it('flags evasion by key', () => {
     expect(kindsOf('phantom_assassin_blur', { dname: 'V' })).toContain('evasion');
     expect(kindsOf('windrunner_windrun', { dname: 'V' })).toContain('evasion');
+    // 'windrunner' the hero prefix contains 'windrun' — must not flag her whole kit.
+    expect(kindsOf('windrunner_shackleshot', { dname: 'V' })).not.toContain('evasion');
+    expect(kindsOf('windrunner_focusfire', { dname: 'V' })).not.toContain('evasion');
   });
 
   it('flags illusions by key', () => {
@@ -180,6 +222,7 @@ describe('buildThreatReport classification rules', () => {
       dname: 'Hexy',
       bkbPierce: 'No',
       dispellable: 'Strong Dispels Only',
+      targetTeam: 'Enemy',
       behavior: ['Unit Target'],
       attribs: [{ key: 'duration', header: 'DURATION', value: [2] }],
     };
@@ -220,40 +263,41 @@ describe('buildThreatReport against real data', () => {
   it('flags Lion: hard-disable + strong-dispel-debuff from Hex, magical-burst from Finger of Death', () => {
     const report = buildThreatReport([26], HERO_DATA, ABILITY_DATA);
     expect(report.enemies).toEqual([{ heroId: 26, heroName: 'Lion' }]);
-    expect(report.flags).toContainEqual({
+    expect(report.flags).toContainEqual(expect.objectContaining({
       kind: 'hard-disable',
       heroId: 26,
       heroName: 'Lion',
       abilityName: 'Hex',
-    });
-    expect(report.flags).toContainEqual({
+      targeted: true,
+    }));
+    expect(report.flags).toContainEqual(expect.objectContaining({
       kind: 'strong-dispel-debuff',
       heroId: 26,
       heroName: 'Lion',
       abilityName: 'Hex',
-    });
-    expect(report.flags).toContainEqual({
+    }));
+    expect(report.flags).toContainEqual(expect.objectContaining({
       kind: 'magical-burst',
       heroId: 26,
       heroName: 'Lion',
       abilityName: 'Finger of Death',
-    });
+    }));
   });
 
   it("flags Axe: Berserker's Call pierces BKB and is undispellable", () => {
     const report = buildThreatReport([2], HERO_DATA, ABILITY_DATA);
-    expect(report.flags).toContainEqual({
+    expect(report.flags).toContainEqual(expect.objectContaining({
       kind: 'pierces-bkb',
       heroId: 2,
       heroName: 'Axe',
       abilityName: "Berserker's Call",
-    });
-    expect(report.flags).toContainEqual({
+    }));
+    expect(report.flags).toContainEqual(expect.objectContaining({
       kind: 'undispellable',
       heroId: 2,
       heroName: 'Axe',
       abilityName: "Berserker's Call",
-    });
+    }));
   });
 
   it('flags Riki invisibility', () => {
@@ -263,12 +307,12 @@ describe('buildThreatReport against real data', () => {
 
   it('flags Phantom Assassin evasion', () => {
     const report = buildThreatReport([44], HERO_DATA, ABILITY_DATA);
-    expect(report.flags).toContainEqual({
+    expect(report.flags).toContainEqual(expect.objectContaining({
       kind: 'evasion',
       heroId: 44,
       heroName: 'Phantom Assassin',
       abilityName: 'Blur',
-    });
+    }));
   });
 
   it('flags Zeus magical-burst', () => {
@@ -291,5 +335,46 @@ describe('buildThreatReport against real data', () => {
     const tally: Partial<Record<ThreatKind, number>> = {};
     for (const flag of report.flags) tally[flag.kind] = (tally[flag.kind] ?? 0) + 1;
     expect(report.counts).toEqual(tally);
+  });
+
+  it('knows Faceless Void has Chronosphere (facet ability): hard-disable that pierces BKB', () => {
+    const report = buildThreatReport([41], HERO_DATA, ABILITY_DATA);
+    const chrono = report.flags.filter((f) => f.abilityName === 'Chronosphere');
+    expect(chrono.map((f) => f.kind)).toContain('hard-disable');
+    expect(chrono.map((f) => f.kind)).toContain('pierces-bkb');
+  });
+
+  it('flags only actual silences on Silencer, not his whole kit', () => {
+    const report = buildThreatReport([75], HERO_DATA, ABILITY_DATA);
+    const silences = report.flags.filter((f) => f.kind === 'silence');
+    expect(silences.length).toBeGreaterThan(0);
+    expect(silences.map((f) => f.abilityName)).not.toContain('Glaives of Wisdom');
+  });
+
+  it('flags only Windrun as evasion on Windranger, not her whole kit', () => {
+    const report = buildThreatReport([21], HERO_DATA, ABILITY_DATA);
+    const evasion = report.flags.filter((f) => f.kind === 'evasion');
+    expect(evasion.map((f) => f.abilityName)).toEqual(['Windrun']);
+  });
+
+  it('does not tell players to buy detection against Slark', () => {
+    const report = buildThreatReport([93], HERO_DATA, ABILITY_DATA);
+    expect(report.flags.filter((f) => f.kind === 'invisibility')).toEqual([]);
+  });
+
+  it('flags Mirana invisibility (facet Moonlight Shadow)', () => {
+    const report = buildThreatReport([9], HERO_DATA, ABILITY_DATA);
+    expect(report.flags.some((f) => f.kind === 'invisibility')).toBe(true);
+  });
+
+  it("does not read Dazzle's Shallow Grave as a disable — it is an ally save", () => {
+    const report = buildThreatReport([50], HERO_DATA, ABILITY_DATA);
+    const grave = report.flags.filter((f) => f.abilityName === 'Shallow Grave');
+    expect(grave.map((f) => f.kind)).toEqual(['sustain']);
+  });
+
+  it('flags Tidehunter Ravage magical-burst (damage lives in the top-level dmg field)', () => {
+    const report = buildThreatReport([29], HERO_DATA, ABILITY_DATA);
+    expect(report.flags.some((f) => f.abilityName === 'Ravage' && f.kind === 'magical-burst')).toBe(true);
   });
 });

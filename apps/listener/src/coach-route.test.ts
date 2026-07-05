@@ -79,7 +79,7 @@ describe('coach route', () => {
     const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
     const res = await app.inject({ method: 'POST', url: '/coach', payload: { question: 'Why did I die?' } });
     expect(res.statusCode).toBe(502);
-    expect(res.json()).toEqual({ error: 'upstream' });
+    expect(res.json()).toEqual({ error: 'upstream', status: 500 });
     await app.close();
   });
 
@@ -93,21 +93,27 @@ describe('coach route', () => {
     await app.close();
   });
 
-  it('handles the OPTIONS preflight with 204 and CORS headers', async () => {
+  it('handles the OPTIONS preflight with 204 and CORS locked to the overlay origin', async () => {
     const app = buildApp({ apiKey: null });
     const res = await app.inject({ method: 'OPTIONS', url: '/coach' });
     expect(res.statusCode).toBe(204);
-    expect(res.headers['access-control-allow-origin']).toBe('*');
+    // Not '*': a random web page must fail preflight so it cannot spend the OpenAI key.
+    expect(res.headers['access-control-allow-origin']).toBe('http://127.0.0.1:5273');
     expect(res.headers['access-control-allow-methods']).toBe('POST');
     expect(res.headers['access-control-allow-headers']).toBe('content-type');
     await app.close();
   });
 
-  it('sets access-control-allow-origin on POST responses', async () => {
+  it('sets access-control-allow-origin on POST responses and honors allowOrigin override', async () => {
     const app = buildApp({ apiKey: null });
     const res = await app.inject({ method: 'POST', url: '/coach', payload: { question: 'hi' } });
-    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['access-control-allow-origin']).toBe('http://127.0.0.1:5273');
     await app.close();
+
+    const custom = buildApp({ apiKey: null, allowOrigin: 'http://localhost:9999' });
+    const res2 = await custom.inject({ method: 'OPTIONS', url: '/coach' });
+    expect(res2.headers['access-control-allow-origin']).toBe('http://localhost:9999');
+    await custom.close();
   });
 
   it('is wired into buildServer via openaiKey', async () => {

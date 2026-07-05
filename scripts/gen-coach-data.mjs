@@ -29,6 +29,17 @@ const toNums = (v) => {
   return nums.every((n) => Number.isFinite(n)) ? nums : null;
 };
 
+// target_team is 'Enemy' | 'Friendly' | 'Both' | an array of those | absent.
+function normalizeTargetTeam(tt) {
+  const arr = Array.isArray(tt) ? tt : [tt];
+  const hasEnemy = arr.includes('Enemy') || arr.includes('Both');
+  const hasFriendly = arr.includes('Friendly') || arr.includes('Both');
+  if (hasEnemy && hasFriendly) return 'Both';
+  if (hasEnemy) return 'Enemy';
+  if (hasFriendly) return 'Friendly';
+  return null;
+}
+
 function pruneAbility(key) {
   const a = abilities[key];
   if (!a || !a.dname) return null;
@@ -39,12 +50,20 @@ function pruneAbility(key) {
     if (!value || value.every((n) => n === 0)) continue;
     attribs.push({ key: at.key, header: (at.header ?? '').replace(/:$/, ''), value });
   }
+  // Some abilities (Ravage, Storm Hammer, ...) carry their primary damage in a
+  // top-level `dmg` field instead of an attrib row.
+  if (!attribs.some((at) => /damage|dmg/.test(at.key))) {
+    const dmg = toNums(a.dmg);
+    if (dmg && dmg.some((n) => n > 0)) attribs.unshift({ key: 'damage', header: 'DAMAGE', value: dmg });
+  }
   // Source data is inconsistently typed (e.g. bkbpierce: [] on a few abilities);
   // only emit values from the documented enums.
   const out = { dname: a.dname };
   if (['Magical', 'Physical', 'Pure'].includes(a.dmg_type)) out.dmgType = a.dmg_type;
   if (['Yes', 'No'].includes(a.bkbpierce)) out.bkbPierce = a.bkbpierce;
   if (['Yes', 'No', 'Strong Dispels Only'].includes(a.dispellable)) out.dispellable = a.dispellable;
+  const targetTeam = normalizeTargetTeam(a.target_team);
+  if (targetTeam) out.targetTeam = targetTeam;
   if (a.behavior) out.behavior = Array.isArray(a.behavior) ? a.behavior : [a.behavior];
   const cd = toNums(a.cd);
   if (cd) out.cd = cd;
@@ -60,7 +79,12 @@ const abilitiesOut = {};
 for (const h of Object.values(heroes)) {
   const ha = heroAbilities[h.name];
   if (!ha) continue;
-  const abilityKeys = (ha.abilities ?? []).filter((k) => {
+  // Facet-gated abilities (e.g. Faceless Void's Chronosphere/Time Zone) live
+  // under facets[].abilities, not the base list. We can't know which facet the
+  // player picked, so include them all — better to warn about a possible
+  // Chronosphere than to not know it exists.
+  const facetKeys = (ha.facets ?? []).flatMap((f) => f.abilities ?? []);
+  const abilityKeys = [...new Set([...(ha.abilities ?? []), ...facetKeys])].filter((k) => {
     if (k === 'generic_hidden') return false;
     const pruned = pruneAbility(k);
     if (!pruned) return false;

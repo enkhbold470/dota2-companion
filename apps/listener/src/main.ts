@@ -14,7 +14,11 @@ if (!openaiKey) {
 
 const port = Number(process.env.PORT ?? 53000);
 const hub = new Hub();
-const app = buildServer({ token, hub, openaiKey });
+const app = buildServer({
+  token, hub, openaiKey,
+  // Override when the overlay is served from a non-default host/port.
+  coachAllowOrigin: process.env.COACH_ALLOW_ORIGIN,
+});
 
 app.listen({ host: '127.0.0.1', port })
   .then(() => console.log(`GSI listener on http://127.0.0.1:${port} (POST /), overlay WS at ws://127.0.0.1:${port}/ws`))

@@ -13,11 +13,17 @@ function isExcludedKey(key: string): boolean {
  * Priority: exact 'damage', then '*_damage' suffix, then any key containing
  * 'damage' or 'dmg' — always skipping excluded keys (delays, durations, etc.).
  */
+// Attribs whose values never exceed this are fractions/multipliers
+// (e.g. percent-of-HP damage), not displayable damage numbers.
+const MIN_DAMAGE_VALUE = 5;
+
 function pickDamageAttrib(
   attribs: { key: string; header: string; value: number[] }[] | undefined,
 ): { key: string; header: string; value: number[] } | null {
   if (!attribs) return null;
-  const candidates = attribs.filter((attrib) => !isExcludedKey(attrib.key));
+  const candidates = attribs.filter(
+    (attrib) => !isExcludedKey(attrib.key) && attrib.value.some((v) => v >= MIN_DAMAGE_VALUE),
+  );
   return (
     candidates.find((attrib) => attrib.key === 'damage') ??
     candidates.find((attrib) => attrib.key.endsWith('_damage')) ??

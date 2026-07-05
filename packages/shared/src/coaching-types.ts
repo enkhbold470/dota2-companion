@@ -6,6 +6,7 @@ export interface AbilityData {
   dmgType?: 'Magical' | 'Physical' | 'Pure';
   bkbPierce?: 'Yes' | 'No';
   dispellable?: 'Yes' | 'No' | 'Strong Dispels Only';
+  targetTeam?: 'Enemy' | 'Friendly' | 'Both';
   behavior?: string[];
   cd?: number[];
   mc?: number[];
@@ -51,6 +52,7 @@ export interface ThreatFlag {
   heroId: number;
   heroName: string;      // localized
   abilityName: string;   // display name of the offending ability
+  targeted?: boolean;    // single-unit-targeted (relevant for Linken's-style counters)
 }
 
 export interface ThreatReport {

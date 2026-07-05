@@ -4,7 +4,15 @@ export interface CoachRouteOptions {
   apiKey: string | null;
   model?: string;
   fetchImpl?: typeof fetch;
+  /**
+   * Origin allowed to call /coach from a browser. Restricting this to the
+   * overlay keeps arbitrary web pages from spending the OpenAI key: a
+   * cross-origin JSON POST triggers a preflight, which fails for other origins.
+   */
+  allowOrigin?: string;
 }
+
+const DEFAULT_ALLOW_ORIGIN = 'http://127.0.0.1:5273';
 
 const SYSTEM_PROMPT =
   'You are a concise Dota 2 coach. Use the JSON game context. Give one actionable answer in under 120 words. Cite item/ability names plainly.';
@@ -14,17 +22,19 @@ interface ChatCompletionResponse {
 }
 
 export function registerCoachRoute(app: FastifyInstance, opts: CoachRouteOptions): void {
+  const allowOrigin = opts.allowOrigin ?? DEFAULT_ALLOW_ORIGIN;
+
   app.options('/coach', async (_req, reply) => {
     return reply
       .code(204)
-      .header('access-control-allow-origin', '*')
+      .header('access-control-allow-origin', allowOrigin)
       .header('access-control-allow-methods', 'POST')
       .header('access-control-allow-headers', 'content-type')
       .send();
   });
 
   app.post('/coach', async (req, reply) => {
-    reply.header('access-control-allow-origin', '*');
+    reply.header('access-control-allow-origin', allowOrigin);
 
     const raw = req.body;
     const body = (typeof raw === 'object' && raw !== null && !Array.isArray(raw))
@@ -58,7 +68,8 @@ export function registerCoachRoute(app: FastifyInstance, opts: CoachRouteOptions
         signal: AbortSignal.timeout(15_000),
       });
       if (!res.ok) {
-        return reply.code(502).send({ error: 'upstream' });
+        console.error(`[coach] OpenAI returned ${res.status} — check the API key/quota.`);
+        return reply.code(502).send({ error: 'upstream', status: res.status });
       }
       const data = (await res.json()) as ChatCompletionResponse;
       const content = data.choices?.[0]?.message?.content;
@@ -67,7 +78,8 @@ export function registerCoachRoute(app: FastifyInstance, opts: CoachRouteOptions
         return reply.code(502).send({ error: 'upstream' });
       }
       return reply.code(200).send({ answer });
-    } catch {
+    } catch (err) {
+      console.error(`[coach] OpenAI request failed: ${err instanceof Error ? err.message : 'unknown error'}`);
       return reply.code(502).send({ error: 'upstream' });
     }
   });

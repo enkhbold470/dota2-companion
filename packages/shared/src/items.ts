@@ -24,8 +24,15 @@ function flagsOf(threat: ThreatReport, kinds: ThreatKind[]): ThreatFlag[] {
   return threat.flags.filter((f) => kinds.includes(f.kind));
 }
 
+// One ability can emit several ThreatKinds (a stun that is also strong-dispel).
+// Thresholds and scores must count distinct abilities, or a lone Sven's Storm
+// Hammer would satisfy a "2+ threats" gate by itself.
+function distinctAbilityCount(flags: ThreatFlag[]): number {
+  return new Set(flags.map((f) => `${f.heroId}:${f.abilityName}`)).size;
+}
+
 function atLeast(flags: ThreatFlag[], min: number): ThreatFlag[] | null {
-  return flags.length >= min ? flags : null;
+  return distinctAbilityCount(flags) >= min ? flags : null;
 }
 
 function bkbBlockableFlags(threat: ThreatReport): ThreatFlag[] {
@@ -90,7 +97,8 @@ const RULES: Rule[] = [
   {
     itemKey: 'sphere',
     verb: 'Spell-blocks',
-    trigger: (t) => atLeast(flagsOf(t, ['pierces-bkb']), 1),
+    // Linken's only blocks single-target spells — AoE/global BKB-piercers don't count.
+    trigger: (t) => atLeast(flagsOf(t, ['pierces-bkb']).filter((f) => f.targeted === true), 1),
     roles: ['core'],
     minClock: 1500,
     weight: 20,
@@ -170,6 +178,14 @@ const RULES: Rule[] = [
   },
 ];
 
+// Owning an item's upgraded form covers the base recommendation.
+const UPGRADED_FORMS: Record<string, string[]> = {
+  maelstrom: ['mjollnir'],
+  cyclone: ['wind_waker'],
+  force_staff: ['hurricane_pike'],
+  ward_sentry: ['ward_dispenser'],
+};
+
 const MAX_CITED = 3;
 
 function formatCitations(flags: ThreatFlag[]): string {
@@ -210,7 +226,8 @@ export function recommendItems(input: ItemEngineInput, items: ItemDataMap): Item
   for (const rule of RULES) {
     const data = items[rule.itemKey];
     if (!data) continue;
-    if (owned.has(`item_${rule.itemKey}`)) continue;
+    const covering = [rule.itemKey, ...(UPGRADED_FORMS[rule.itemKey] ?? [])];
+    if (covering.some((key) => owned.has(`item_${key}`))) continue;
     if (clock < (rule.minClock ?? 0)) continue;
     if (rule.roles && input.role !== 'unknown' && !rule.roles.includes(input.role)) continue;
     const matched = rule.trigger(input.threat, input);
@@ -226,7 +243,7 @@ export function recommendItems(input: ItemEngineInput, items: ItemDataMap): Item
       itemName: data.dname,
       cost: data.cost,
       affordable,
-      score: rule.weight * matched.length,
+      score: rule.weight * distinctAbilityCount(matched),
       reasons,
     });
   }
