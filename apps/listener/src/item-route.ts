@@ -72,11 +72,15 @@ export function registerItemRoute(app: FastifyInstance, opts: ItemRouteOptions):
 
     const raw = req.body;
     const body = (typeof raw === 'object' && raw !== null && !Array.isArray(raw))
-      ? (raw as { context?: unknown })
+      ? (raw as { context?: unknown; style?: unknown })
       : {};
     if (!opts.apiKey) {
       return reply.code(501).send({ error: 'no-key' });
     }
+    const style = body.style === 'fun' ? 'fun' : 'meta';
+    const styleLine = style === 'fun'
+      ? 'BUILD STYLE = FUN: lean into high-impact, high-damage, spicy picks that are still castable on this hero — big magic burst (Dagon, Ethereal Blade, Shiva\'s Guard, Veil of Discord), big physical/crit (Daedalus, Radiance, Bloodthorn, Monkey King Bar), and greedy tempo (Refresher Orb, Octarine Core). Choose fun and aggressive over safe/defensive, but keep every item usable on the hero (caster vs carry, right attack type). Punchy reasons.'
+      : 'BUILD STYLE = META: the optimal, highest-impact build for winning.';
 
     const doFetch = opts.fetchImpl ?? fetch;
     try {
@@ -92,7 +96,7 @@ export function registerItemRoute(app: FastifyInstance, opts: ItemRouteOptions):
           max_tokens: 400,
           response_format: { type: 'json_object' },
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: `${SYSTEM_PROMPT} ${styleLine}` },
             { role: 'user', content: `Context:\n${JSON.stringify(body.context ?? null).slice(0, 4000)}` },
           ],
         }),

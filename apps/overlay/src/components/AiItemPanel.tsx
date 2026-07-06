@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { matchItemKeys, itemImageUrl, type ItemDataMap, type ItemRecommendation } from '@dc/shared';
 import { ItemAdvicePanel } from './ItemAdvicePanel';
 import { ITEM_BUILD_URL } from '../config';
@@ -19,6 +19,7 @@ export interface AiItemPanelProps {
 }
 
 type Status = 'idle' | 'loading' | 'ok' | 'error' | 'no-key';
+type Style = 'meta' | 'fun';
 
 export function AiItemPanel({
   getContext, signature, ready, itemData, gold, fallbackRecs, hasEnemies,
@@ -26,9 +27,12 @@ export function AiItemPanel({
 }: AiItemPanelProps) {
   const [items, setItems] = useState<AiItem[]>([]);
   const [status, setStatus] = useState<Status>('idle');
+  const [style, setStyle] = useState<Style>('fun');
   // getContext is a fresh closure each render; keep the latest without retriggering fetches.
   const ctxRef = useRef(getContext);
   ctxRef.current = getContext;
+  const styleRef = useRef(style);
+  styleRef.current = style;
   const inFlight = useRef(false);
 
   const fetchBuild = async () => {
@@ -39,7 +43,7 @@ export function AiItemPanel({
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ context: ctxRef.current() }),
+        body: JSON.stringify({ context: ctxRef.current(), style: styleRef.current }),
       });
       if (res.status === 501) { setStatus('no-key'); return; }
       if (res.status !== 200) { setStatus('error'); return; }
@@ -77,17 +81,34 @@ export function AiItemPanel({
 
   const keys = matchItemKeys(items.map((i) => i.name), itemData);
 
+  const pickStyle = (next: Style) => {
+    if (next === style) return;
+    setStyle(next);
+    styleRef.current = next;
+    if (ready) void fetchBuild();
+  };
+  const styleBtn = (s: Style): CSSProperties => ({
+    fontSize: 10, cursor: 'pointer', borderRadius: 4, padding: '0 6px',
+    border: '1px solid #374151',
+    background: style === s ? (s === 'fun' ? '#7c3aed' : '#2563eb') : '#111827',
+    color: style === s ? '#fff' : '#93c5fd',
+  });
+
   return (
     <div style={{ fontSize: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <span style={{ fontSize: 10, letterSpacing: 0.6, textTransform: 'uppercase', color: '#c084fc' }}>
           AI item build
         </span>
+        <div style={{ display: 'inline-flex', gap: 3 }}>
+          <button type="button" onClick={() => pickStyle('meta')} style={styleBtn('meta')}>Meta</button>
+          <button type="button" onClick={() => pickStyle('fun')} style={styleBtn('fun')}>Fun 🎉</button>
+        </div>
         <button
           type="button"
           onClick={() => void fetchBuild()}
           disabled={status === 'loading' || !ready}
-          style={{ fontSize: 11, cursor: 'pointer', background: '#111827', color: '#93c5fd', border: '1px solid #374151', borderRadius: 4, padding: '0 6px' }}
+          style={{ fontSize: 11, cursor: 'pointer', background: '#111827', color: '#93c5fd', border: '1px solid #374151', borderRadius: 4, padding: '0 6px', marginLeft: 'auto' }}
         >
           {status === 'loading' ? '…' : '↻'}
         </button>
