@@ -260,7 +260,17 @@ function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
-export interface MatchEvent { t: number; kind: 'kill' | 'death'; }
+export type GameEventKind =
+  | 'game_start' | 'game_end'
+  | 'kill' | 'death' | 'assist'
+  | 'respawn' | 'level_up'
+  | 'battle' | 'day' | 'night';
+
+export interface MatchEvent {
+  t: number;          // seconds on the match clock
+  kind: GameEventKind;
+  value?: number;     // context: new level for level_up, hp% at a battle hit, etc.
+}
 
 /**
  * Post-game "why did I crash?" — find the biggest sustained focus drop that

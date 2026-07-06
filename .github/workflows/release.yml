@@ -43,10 +43,18 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dota2-companion-windows
-          path: apps/desktop/release/*.exe
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest.yml
 
-      - name: Attach installer to GitHub release
+      # Attach the installer AND the auto-update metadata (latest.yml + blockmap) so
+      # electron-updater can detect and delta-download the next release.
+      - name: Attach installer + update feed to GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: apps/desktop/release/*.exe
+          files: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest.yml

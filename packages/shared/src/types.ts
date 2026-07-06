@@ -31,6 +31,8 @@ export interface GsiHero {
   level?: number;
   alive?: boolean;
   respawn_seconds?: number;
+  health_percent?: number;
+  mana_percent?: number;
   has_aghanims_scepter?: boolean;
   has_aghanims_shard?: boolean;
 }
@@ -79,6 +81,8 @@ export interface NormalizedState {
     level: number | null;
     alive: boolean | null;
     respawnSeconds: number | null;
+    hpPercent: number | null;   // 0..100; drives "battle" (damage-taken) detection
+    mpPercent: number | null;   // 0..100
     hasScepter: boolean;
     hasShard: boolean;
   };

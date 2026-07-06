@@ -25,6 +25,8 @@ function makeState(patch: StatePatch = {}): NormalizedState {
       level: 10,
       alive: true,
       respawnSeconds: null,
+      hpPercent: 100,
+      mpPercent: 100,
       hasScepter: false,
       hasShard: true,
       ...patch.hero,

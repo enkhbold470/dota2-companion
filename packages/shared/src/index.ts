@@ -16,3 +16,4 @@ export * from './heromatch';
 export * from './itemmatch';
 export * from './assets';
 export * from './eeg';
+export * from './events';

@@ -5,6 +5,13 @@ copyright: Read-only, advisory-only. Uses only Valve GSI.
 directories:
   output: release
 
+# Auto-update feed. electron-builder writes app-update.yml into the package and a
+# latest.yml alongside the installer; electron-updater reads GitHub releases from here.
+publish:
+  provider: github
+  owner: enkhbold470
+  repo: dota2-companion
+
 # The main process is bundled to a single self-contained file, so we only ship
 # that plus the built overlay (as an extra resource served by the listener).
 files:

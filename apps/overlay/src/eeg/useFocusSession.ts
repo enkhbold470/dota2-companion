@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  computeBandPowers, focusFeatures, contactQuality, FocusMonitor,
+  computeBandPowers, focusFeatures, contactQuality, FocusMonitor, deriveEvents,
   type FocusReading, type MatchEvent, type NormalizedState,
 } from '@dc/shared';
 import { RECORDING_URL } from '../config';
@@ -69,7 +69,7 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
   // Latest GSI, read inside the interval without re-subscribing.
   const gsi = useRef<NormalizedState | null>(state);
   gsi.current = state;
-  const prevCombat = useRef<{ kills: number; deaths: number; matchId: string | null }>({ kills: 0, deaths: 0, matchId: null });
+  const prevState = useRef<NormalizedState | null>(null);
   const eventsRef = useRef<MatchEvent[]>([]);
   const demoPhase = useRef(0);
 
@@ -167,39 +167,28 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
     }
   }, [mode, deviceName]);
 
-  // Rebaseline + clear events when the match changes — but never mid-recording,
-  // since a deliberate recording may deliberately span match boundaries.
+  // Diff successive GSI snapshots into match events (kills, deaths, respawns,
+  // level-ups, battles, day/night). On a match change we rebaseline + clear —
+  // but never mid-recording, since a deliberate recording may span boundaries.
   useEffect(() => {
-    const matchId = state?.matchId ?? null;
-    if (matchId !== prevCombat.current.matchId) {
-      prevCombat.current.matchId = matchId;
-      prevCombat.current.kills = state?.combat.kills ?? prevCombat.current.kills;
-      prevCombat.current.deaths = state?.combat.deaths ?? prevCombat.current.deaths;
-      if (!recordingRef.current) {
-        eventsRef.current = [];
-        setEvents([]);
-        setLive([]);
-        monitor.current = new FocusMonitor();
-      }
+    if (!state) return;
+    const prev = prevState.current;
+    const matchChanged = (prev?.matchId ?? null) !== (state.matchId ?? null);
+    if (matchChanged && !recordingRef.current) {
+      eventsRef.current = [];
+      setEvents([]);
+      setLive([]);
+      monitor.current = new FocusMonitor();
+      prevState.current = state;   // fresh start — no phantom deltas this tick
+      return;
     }
-  }, [state?.matchId, state?.combat.kills, state?.combat.deaths]);
-
-  // Mark kill/death events from GSI deltas, tagged to the match clock.
-  useEffect(() => {
-    const c = state?.combat;
-    if (!c) return;
-    const clock = state?.clock ?? 0;
-    const kills = c.kills ?? prevCombat.current.kills;
-    const deaths = c.deaths ?? prevCombat.current.deaths;
-    const newEvents: MatchEvent[] = [];
-    if (kills > prevCombat.current.kills) newEvents.push({ t: clock, kind: 'kill' });
-    if (deaths > prevCombat.current.deaths) newEvents.push({ t: clock, kind: 'death' });
-    if (newEvents.length) {
-      eventsRef.current = [...eventsRef.current, ...newEvents];
+    const evs = deriveEvents(prev, state);
+    prevState.current = state;
+    if (evs.length) {
+      eventsRef.current = [...eventsRef.current, ...evs];
       setEvents(eventsRef.current);
     }
-    prevCombat.current = { ...prevCombat.current, kills, deaths };
-  }, [state?.combat, state?.clock]);
+  }, [state]);
 
   // The ~1 Hz compute loop — always streams focus while a source is live.
   useEffect(() => {
@@ -210,7 +199,9 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
       const s = gsi.current;
       const clock = s?.clock ?? Math.floor(performance.now() / 1000);
       const recentDeaths = eventsRef.current.filter((e) => e.kind === 'death' && clock - e.t <= 60).length;
-      const inFight = eventsRef.current.some((e) => clock - e.t <= 10) || s?.hero.alive === false;
+      const inFight = eventsRef.current.some((e) =>
+        (e.kind === 'battle' || e.kind === 'kill' || e.kind === 'death') && clock - e.t <= 10)
+        || s?.hero.alive === false;
 
       let features;
       let quality: 0 | 1 | 2 | 3;
@@ -226,6 +217,13 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
           relaxation: 0.2,
         };
         quality = 3;
+        // Sprinkle synthetic events so "Try demo" shows the event-overlaid timeline.
+        if (recordingRef.current) {
+          const add: MatchEvent[] = [];
+          if (p % 23 === 0) add.push({ t: clock, kind: p % 46 === 0 ? 'death' : 'kill' });
+          if (p % 9 === 0) add.push({ t: clock, kind: 'battle', value: 45 });
+          if (add.length) { eventsRef.current = [...eventsRef.current, ...add]; setEvents(eventsRef.current); }
+        }
       } else {
         const buf = buffer.current;
         if (buf.length < 64) return;               // not enough signal yet

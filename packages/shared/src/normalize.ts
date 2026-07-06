@@ -46,6 +46,8 @@ export function normalizeGsi(payload: GsiPayload): NormalizedState {
       level: numOrNull(hero.level),
       alive: typeof hero.alive === 'boolean' ? hero.alive : null,
       respawnSeconds: numOrNull(hero.respawn_seconds),
+      hpPercent: numOrNull(hero.health_percent),
+      mpPercent: numOrNull(hero.mana_percent),
       hasScepter: hero.has_aghanims_scepter === true,
       hasShard: hero.has_aghanims_shard === true,
     },

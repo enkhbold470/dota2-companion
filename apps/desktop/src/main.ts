@@ -1,4 +1,5 @@
 import { app, BrowserWindow, shell, dialog } from 'electron';
+import electronUpdater from 'electron-updater';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -83,6 +84,40 @@ function readOpenAiKey(dir: string): string | null {
   return null;
 }
 
+// In-app software updates from GitHub releases. The user always chooses — we never
+// download or install without a click. Best-effort: an update check must never block
+// or crash the app (offline, rate-limited, unsigned dev build all fail quiet).
+function setupAutoUpdate(win: BrowserWindow): void {
+  if (!app.isPackaged) return; // dev has no release feed
+  const { autoUpdater } = electronUpdater;
+  autoUpdater.autoDownload = false;          // ask before downloading
+  autoUpdater.autoInstallOnAppQuit = true;   // if they defer, install on next quit
+
+  autoUpdater.on('update-available', (info) => {
+    void dialog.showMessageBox(win, {
+      type: 'info', buttons: ['Download & install', 'Later'], defaultId: 0, cancelId: 1,
+      title: 'Update available',
+      message: `Dota 2 Companion ${info.version} is available.`,
+      detail: 'Download it now? You can keep using the app while it downloads.',
+    }).then(({ response }) => { if (response === 0) void autoUpdater.downloadUpdate(); });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    void dialog.showMessageBox(win, {
+      type: 'info', buttons: ['Restart & install', 'On next launch'], defaultId: 0, cancelId: 1,
+      title: 'Update ready',
+      message: `Version ${info.version} downloaded.`,
+      detail: 'Restart now to finish installing?',
+    }).then(({ response }) => { if (response === 0) autoUpdater.quitAndInstall(); });
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[updater]', err instanceof Error ? err.message : err);
+  });
+
+  void autoUpdater.checkForUpdates();
+}
+
 async function start(): Promise<void> {
   const dir = configDir();
   const token = loadOrCreateToken(dir);
@@ -132,6 +167,9 @@ async function start(): Promise<void> {
     else if (devices.length > 0) callback(devices[0]!.deviceId);
     // else: keep waiting; the picker times out client-side.
   });
+
+  // Offer in-app updates (best-effort; user chooses).
+  setupAutoUpdate(win);
 
   if (!cfg.installed) {
     void dialog.showMessageBox(win, {
