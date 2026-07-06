@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 
 export interface ItemRouteOptions {
   apiKey: string | null;
+  /** Live key lookup — lets the key be set at runtime via /settings without a restart. */
+  getApiKey?: () => string | null;
   model?: string;
   fetchImpl?: typeof fetch;
   allowOrigin?: string;
@@ -74,7 +76,8 @@ export function registerItemRoute(app: FastifyInstance, opts: ItemRouteOptions):
     const body = (typeof raw === 'object' && raw !== null && !Array.isArray(raw))
       ? (raw as { context?: unknown; style?: unknown })
       : {};
-    if (!opts.apiKey) {
+    const apiKey = opts.getApiKey ? opts.getApiKey() : opts.apiKey;
+    if (!apiKey) {
       return reply.code(501).send({ error: 'no-key' });
     }
     const style = body.style === 'fun' ? 'fun' : 'meta';
@@ -88,7 +91,7 @@ export function registerItemRoute(app: FastifyInstance, opts: ItemRouteOptions):
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          authorization: `Bearer ${opts.apiKey}`,
+          authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: opts.model ?? 'gpt-4o',

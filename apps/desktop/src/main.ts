@@ -93,7 +93,13 @@ async function start(): Promise<void> {
     ? join(process.resourcesPath, 'overlay')
     : join(__dirname, '../../overlay/dist');
 
-  const server = buildServer({ token, hub: new Hub(), openaiKey, staticDir });
+  const server = buildServer({
+    token, hub: new Hub(), openaiKey, staticDir,
+    // First-time setup writes the key here so it survives a restart.
+    onSaveOpenAiKey: (key) => {
+      try { writeFileSync(join(dir, 'openai-key.txt'), key, 'utf8'); } catch { /* non-fatal */ }
+    },
+  });
   await server.listen({ host: '127.0.0.1', port: PORT });
 
   const win = new BrowserWindow({
@@ -111,6 +117,17 @@ async function start(): Promise<void> {
   win.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // Web Bluetooth device picker: the overlay calls navigator.bluetooth to reach
+  // the NeuroFocus EEG headset. Electron needs the host to resolve the chooser —
+  // auto-pick the first NeuroFocus device so the in-page "Connect" just works.
+  win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
+    event.preventDefault();
+    const nf = devices.find((d) => (d.deviceName ?? '').toUpperCase().includes('NEUROFOCUS'));
+    if (nf) callback(nf.deviceId);
+    else if (devices.length > 0) callback(devices[0]!.deviceId);
+    // else: keep waiting; the picker times out client-side.
   });
 
   if (!cfg.installed) {

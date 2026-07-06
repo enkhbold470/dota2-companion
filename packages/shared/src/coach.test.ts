@@ -37,6 +37,7 @@ function makeState(patch: StatePatch = {}): NormalizedState {
       lastHits: null,
       ...patch.economy,
     },
+    combat: { kills: null, deaths: null, assists: null },
   };
 }
 

@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 
 export interface CoachRouteOptions {
   apiKey: string | null;
+  /** Live key lookup — lets the key be set at runtime via /settings without a restart. */
+  getApiKey?: () => string | null;
   model?: string;
   fetchImpl?: typeof fetch;
   /**
@@ -59,7 +61,8 @@ export function registerCoachRoute(app: FastifyInstance, opts: CoachRouteOptions
     if (typeof question !== 'string' || question.trim() === '' || question.length > 500) {
       return reply.code(400).send({ error: 'bad-question' });
     }
-    if (!opts.apiKey) {
+    const apiKey = opts.getApiKey ? opts.getApiKey() : opts.apiKey;
+    if (!apiKey) {
       return reply.code(501).send({ error: 'no-key' });
     }
 
@@ -69,7 +72,7 @@ export function registerCoachRoute(app: FastifyInstance, opts: CoachRouteOptions
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          authorization: `Bearer ${opts.apiKey}`,
+          authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: opts.model ?? 'gpt-4o',

@@ -89,6 +89,11 @@ export interface NormalizedState {
     xpm: number | null;
     lastHits: number | null;
   };
+  combat: {                  // used by the biometric layer to mark kill/death events
+    kills: number | null;
+    deaths: number | null;
+    assists: number | null;
+  };
   items: string[];           // names in item slots 0..8, excluding empty slots
   hasTp: boolean;            // TP scroll present in the teleport slot
   abilities: NormalizedAbility[]; // real hero abilities in slot order (cosmetic/talent slots filtered)

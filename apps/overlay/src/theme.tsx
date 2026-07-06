@@ -35,6 +35,17 @@ export const t = {
   },
   // Damage-type accents (kept exact — asserted by SkillPanel tests).
   dmg: { Magical: '#a78bfa', Physical: '#f87171', Pure: '#fbbf24' } as Record<string, string>,
+  // NeuroFocus brand — minimalist, from the mental-game design (colors-brand).
+  // Near-black canvas, one purple focus line, one orange stress line, green/red
+  // kill/death markers, huge near-white numerals. Used by the Focus panel.
+  brand: {
+    focus: '#a855f7',   // focus line (purple)
+    stress: '#f59e0b',  // stress β line (orange)
+    kill: '#22c55e',    // kill marker (green)
+    death: '#ef4444',   // death marker (red)
+    ink: '#f5f5f7',     // hero numerals (near-white)
+    canvas: '#0a0a0f',  // near-black plot background
+  },
   font: { xs: 10, sm: 11, base: 12, md: 13, lg: 16, xl: 20 },
   weight: { normal: 400, semibold: 600 },
   radius: { sm: 3, md: 4, lg: 8, pill: 999 },

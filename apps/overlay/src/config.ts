@@ -6,6 +6,8 @@ const origin = import.meta.env.DEV ? 'http://127.0.0.1:53000' : window.location.
 export const COACH_URL = `${origin}/coach`;
 export const ITEM_BUILD_URL = `${origin}/item-build`;
 export const VISION_URL = `${origin}/vision`;
+export const SETTINGS_URL = `${origin}/settings`;
+export const OPENAI_KEY_URL = `${origin}/settings/openai-key`;
 
 export const WS_URL = (() => {
   const u = new URL(origin);

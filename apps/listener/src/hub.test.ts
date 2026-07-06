@@ -6,6 +6,7 @@ const state = (matchId: string): NormalizedState => ({
   matchId, inProgress: true, paused: false, clock: 100, isDay: true,
   hero: { id: 1, level: 1, alive: true, respawnSeconds: 0, hasScepter: false, hasShard: false },
   economy: { gold: 0, netWorth: 0, gpm: 0, xpm: 0, lastHits: 0 },
+  combat: { kills: 0, deaths: 0, assists: 0 },
   items: [],
   hasTp: false,
   abilities: [],

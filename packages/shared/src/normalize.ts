@@ -56,6 +56,11 @@ export function normalizeGsi(payload: GsiPayload): NormalizedState {
       xpm: numOrNull(player.xpm),
       lastHits: numOrNull(player.last_hits),
     },
+    combat: {
+      kills: numOrNull(player.kills),
+      deaths: numOrNull(player.deaths),
+      assists: numOrNull(player.assists),
+    },
     items: itemNames,
     hasTp: !!items['teleport0']?.name && items['teleport0'].name !== EMPTY_ITEM,
     abilities: abilityList,

@@ -2,6 +2,8 @@ import type { FastifyInstance } from 'fastify';
 
 export interface VisionRouteOptions {
   apiKey: string | null;
+  /** Live key lookup — lets the key be set at runtime via /settings without a restart. */
+  getApiKey?: () => string | null;
   model?: string;
   fetchImpl?: typeof fetch;
   allowOrigin?: string;
@@ -73,7 +75,8 @@ export function registerVisionRoute(app: FastifyInstance, opts: VisionRouteOptio
     if (typeof image !== 'string' || !image.startsWith('data:image/') || image.length > MAX_IMAGE_CHARS) {
       return reply.code(400).send({ error: 'bad-image' });
     }
-    if (!opts.apiKey) {
+    const apiKey = opts.getApiKey ? opts.getApiKey() : opts.apiKey;
+    if (!apiKey) {
       return reply.code(501).send({ error: 'no-key' });
     }
     const ownHero = typeof body.ownHero === 'string' && body.ownHero.trim() !== '' ? body.ownHero.trim() : null;
@@ -84,7 +87,7 @@ export function registerVisionRoute(app: FastifyInstance, opts: VisionRouteOptio
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          authorization: `Bearer ${opts.apiKey}`,
+          authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model: opts.model ?? 'gpt-4o',

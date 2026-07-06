@@ -5,6 +5,7 @@ import { isAuthorized, normalizeGsi, type GsiPayload } from '@dc/shared';
 import { registerCoachRoute } from './coach-route';
 import { registerItemRoute } from './item-route';
 import { registerVisionRoute } from './vision-route';
+import { registerSettingsRoute } from './settings-route';
 import type { Hub } from './hub';
 
 export interface ServerOptions {
@@ -12,6 +13,8 @@ export interface ServerOptions {
   hub: Hub;
   openaiKey?: string | null;
   coachAllowOrigin?: string;
+  /** Persist a key set via /settings (e.g. the desktop app writes openai-key.txt). */
+  onSaveOpenAiKey?: (key: string) => void;
   /** When set, the built overlay is served from this dir so the app is one process. */
   staticDir?: string;
 }
@@ -23,9 +26,22 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
 
   app.get('/health', async () => ({ ok: true }));
 
-  registerCoachRoute(app, { apiKey: opts.openaiKey ?? null, allowOrigin: opts.coachAllowOrigin });
-  registerItemRoute(app, { apiKey: opts.openaiKey ?? null, allowOrigin: opts.coachAllowOrigin });
-  registerVisionRoute(app, { apiKey: opts.openaiKey ?? null, allowOrigin: opts.coachAllowOrigin });
+  // The OpenAI key can be set at runtime via /settings; hold it mutably and hand
+  // the routes a live getter so a first-time setup doesn't need a restart.
+  let currentKey: string | null = opts.openaiKey ?? null;
+  const getApiKey = (): string | null => currentKey;
+
+  registerCoachRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
+  registerItemRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
+  registerVisionRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
+  registerSettingsRoute(app, {
+    getStatus: () => ({ openaiKeySet: !!currentKey }),
+    setOpenAiKey: (key) => {
+      currentKey = key.trim() === '' ? null : key.trim();
+      if (currentKey && opts.onSaveOpenAiKey) opts.onSaveOpenAiKey(currentKey);
+    },
+    allowOrigin: opts.coachAllowOrigin,
+  });
 
   app.post('/', async (req, reply) => {
     const raw = req.body;

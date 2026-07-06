@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   dayNight, runeTimers, roshanTimer, gradeEconomy, type Role,
   HERO_DATA, ABILITY_DATA, ITEM_DATA, heroById,
   buildThreatReport, recommendItems, buildSkillReadout, suggestNextSkill, coachTips,
 } from '@dc/shared';
 import { useGsiSocket } from './useGsiSocket';
+import { useFocusSession } from './eeg/useFocusSession';
 import { t, Panel, SectionLabel } from './theme';
 import { Logo } from './components/Logo';
 import { ConnectionBadge } from './components/ConnectionBadge';
@@ -16,6 +17,8 @@ import { CoachPanel } from './components/CoachPanel';
 import { AiItemPanel } from './components/AiItemPanel';
 import { SkillPanel } from './components/SkillPanel';
 import { AskCoachPanel } from './components/AskCoachPanel';
+import { FocusPanel } from './components/FocusPanel';
+import { SettingsPanel, SETUP_DONE_KEY } from './components/SettingsPanel';
 
 const HERO_OPTIONS: HeroOption[] = Object.entries(HERO_DATA)
   .map(([id, h]) => ({ id: Number(id), localized_name: h.localizedName, name: h.name }))
@@ -26,6 +29,13 @@ export default function App() {
   const [role, setRole] = useState<Role>('core');
   const [enemies, setEnemies] = useState<number[]>([]);
   const [roshKilledAt, setRoshKilledAt] = useState<number | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const focus = useFocusSession(state);
+
+  // First-run: open setup once so a new user can drop in their OpenAI key.
+  useEffect(() => {
+    try { if (!localStorage.getItem(SETUP_DONE_KEY)) setSettingsOpen(true); } catch { /* ignore */ }
+  }, []);
 
   const clock = state?.clock ?? null;
   const dn = clock === null ? null : dayNight(clock);
@@ -102,6 +112,11 @@ export default function App() {
             <option value="unknown">unknown</option>
           </select>
         </label>
+        <button
+          type="button" title="Setup & settings" aria-label="Settings"
+          onClick={() => setSettingsOpen(true)}
+          style={{ background: 'transparent', border: 0, cursor: 'pointer', color: t.color.textMuted, fontSize: 18, lineHeight: 1, padding: 2 }}
+        >⚙</button>
       </header>
 
       <Panel>
@@ -150,9 +165,15 @@ export default function App() {
       </Panel>
 
       <Panel>
+        <FocusPanel session={focus} />
+      </Panel>
+
+      <Panel>
         <SectionLabel style={{ marginBottom: t.space.sm }}>Ask coach</SectionLabel>
         <AskCoachPanel getContext={getCoachContext} />
       </Panel>
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} session={focus} />
     </div>
   );
 }

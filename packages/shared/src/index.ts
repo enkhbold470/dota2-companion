@@ -15,3 +15,4 @@ export * from './coach';
 export * from './heromatch';
 export * from './itemmatch';
 export * from './assets';
+export * from './eeg';
