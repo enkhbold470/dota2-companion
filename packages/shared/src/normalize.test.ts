@@ -14,6 +14,14 @@ const full: GsiPayload = {
     slot1: { name: 'empty' },
     slot2: { name: 'item_force_staff' },
     neutral0: { name: 'item_keen_optic' },
+    teleport0: { name: 'item_tpscroll' },
+  },
+  abilities: {
+    ability0: { name: 'lion_impale', level: 4, can_cast: true, passive: false, ability_active: true, cooldown: 0, ultimate: false },
+    ability1: { name: 'lion_voodoo', level: 2, can_cast: false, passive: false, ability_active: true, cooldown: 11, ultimate: false },
+    ability2: { name: 'lion_finger_of_death', level: 1, can_cast: true, passive: false, ability_active: true, cooldown: 0, ultimate: true },
+    ability3: { name: 'special_bonus_unique_lion_3', level: 1 },
+    ability4: { name: 'plus_high_five', level: 1 },
   },
 };
 
@@ -36,6 +44,31 @@ describe('normalizeGsi', () => {
     expect(s.items).toEqual(['item_blink', 'item_force_staff']);
   });
 
+  it('detects the TP scroll in the teleport slot', () => {
+    expect(normalizeGsi(full).hasTp).toBe(true);
+    expect(normalizeGsi({ items: { teleport0: { name: 'empty' } } }).hasTp).toBe(false);
+    expect(normalizeGsi({}).hasTp).toBe(false);
+  });
+
+  it('collects real abilities in slot order, filtering talents and cosmetics', () => {
+    const s = normalizeGsi(full);
+    expect(s.abilities.map((a) => a.name)).toEqual([
+      'lion_impale', 'lion_voodoo', 'lion_finger_of_death',
+    ]);
+    expect(s.abilities[0]).toEqual({
+      name: 'lion_impale', level: 4, canCast: true, cooldown: 0, passive: false, ultimate: false,
+    });
+    expect(s.abilities[1]?.cooldown).toBe(11);
+    expect(s.abilities[2]?.ultimate).toBe(true);
+  });
+
+  it('defaults ability level to 0 and canCast to null when missing', () => {
+    const s = normalizeGsi({ abilities: { ability0: { name: 'lion_impale' } } });
+    expect(s.abilities[0]).toEqual({
+      name: 'lion_impale', level: 0, canCast: null, cooldown: null, passive: false, ultimate: false,
+    });
+  });
+
   it('returns nulls for an empty payload without throwing', () => {
     const s = normalizeGsi({});
     expect(s.matchId).toBeNull();
@@ -45,5 +78,6 @@ describe('normalizeGsi', () => {
     expect(s.hero.id).toBeNull();
     expect(s.economy.gpm).toBeNull();
     expect(s.items).toEqual([]);
+    expect(s.abilities).toEqual([]);
   });
 });

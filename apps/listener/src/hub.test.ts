@@ -7,6 +7,8 @@ const state = (matchId: string): NormalizedState => ({
   hero: { id: 1, level: 1, alive: true, respawnSeconds: 0, hasScepter: false, hasShard: false },
   economy: { gold: 0, netWorth: 0, gpm: 0, xpm: 0, lastHits: 0 },
   items: [],
+  hasTp: false,
+  abilities: [],
 });
 
 describe('Hub', () => {
