@@ -49,6 +49,31 @@ describe('item-build route', () => {
     await app.close();
   });
 
+  it('passes the fun build style into the system prompt', async () => {
+    const fetchMock = vi.fn((_i: RequestInfo | URL, _init?: RequestInit) =>
+      Promise.resolve(okItems([{ name: 'Dagon', reason: 'delete them' }])));
+    const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
+    const res = await app.inject({
+      method: 'POST', url: '/item-build',
+      payload: { context: { hero: { name: 'Zeus' } }, style: 'fun' },
+    });
+    expect(res.statusCode).toBe(200);
+    const init = fetchMock.mock.calls[0]?.[1];
+    const sent = JSON.parse(String(init?.body)) as { messages: { role: string; content: string }[] };
+    expect(sent.messages[0]?.content).toContain('BUILD STYLE = FUN');
+    await app.close();
+  });
+
+  it('defaults to the meta build style when none is given', async () => {
+    const fetchMock = vi.fn((_i: RequestInfo | URL, _init?: RequestInit) =>
+      Promise.resolve(okItems([{ name: 'Black King Bar', reason: 'safe' }])));
+    const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
+    await app.inject({ method: 'POST', url: '/item-build', payload: { context: {} } });
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: { content: string }[] };
+    expect(sent.messages[0]?.content).toContain('BUILD STYLE = META');
+    await app.close();
+  });
+
   it('returns 502 when OpenAI responds non-OK', async () => {
     const fetchMock = vi.fn(() => Promise.resolve(new Response('nope', { status: 429 })));
     const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
