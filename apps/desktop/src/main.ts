@@ -101,6 +101,9 @@ async function start(): Promise<void> {
     height: 920,
     title: 'Dota 2 Companion',
     autoHideMenuBar: true,
+    // Match the overlay's app background so the window never flashes white
+    // before the page paints (and around the content while loading).
+    backgroundColor: '#0b1220',
     webPreferences: { contextIsolation: true },
   });
   await win.loadURL(`http://127.0.0.1:${PORT}`);

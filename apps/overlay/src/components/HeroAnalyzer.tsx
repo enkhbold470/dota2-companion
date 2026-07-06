@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { matchHeroNames, heroIconUrl, type HeroDataMap } from '@dc/shared';
+import { t, btn, SectionLabel } from '../theme';
 import { VISION_URL } from '../config';
 
 export interface HeroAnalyzerProps {
@@ -121,20 +122,13 @@ export function HeroAnalyzer({
   }, [heroData]);
 
   return (
-    <div style={{ fontSize: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 10, letterSpacing: 0.6, textTransform: 'uppercase', color: '#c084fc' }}>
-          Detect enemies from screenshot
-        </span>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-          style={{ fontSize: 11, cursor: 'pointer', background: '#111827', color: '#93c5fd', border: '1px solid #374151', borderRadius: 4, padding: '1px 8px' }}
-        >
+    <div style={{ fontSize: t.font.base, display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: t.space.md, flexWrap: 'wrap' }}>
+        <SectionLabel tone="ai">Detect enemies from screenshot</SectionLabel>
+        <button type="button" disabled={busy} onClick={() => fileRef.current?.click()} style={btn('ghost')}>
           Upload
         </button>
-        <span style={{ color: '#6b7280' }}>Ctrl+V a shot of the enemy team (Win+Shift+S)</span>
+        <span style={{ color: t.color.textFaint, fontSize: t.font.sm }}>Ctrl+V a shot of the enemy team (Win+Shift+S)</span>
         <input
           ref={fileRef}
           type="file"
@@ -145,24 +139,24 @@ export function HeroAnalyzer({
       </div>
 
       {(busy || status) && (
-        <div style={{ marginTop: 5, color: busy ? '#93c5fd' : '#e5e7eb' }}>{busy ? 'Analyzing…' : status}</div>
+        <div style={{ color: busy ? t.color.accentText : t.color.text }}>{busy ? 'Analyzing…' : status}</div>
       )}
 
       {detected.length > 0 && (
-        <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ color: '#4ade80', fontSize: 11 }}>Detected:</span>
+        <div style={{ display: 'flex', gap: t.space.sm, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: t.color.success, fontSize: t.font.sm }}>Detected:</span>
           {detected.map((d) => {
             const npc = heroData[String(d.id)]?.name;
             return (
-              <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }} title={d.name}>
+              <span key={d.id} style={{ display: 'inline-flex', alignItems: 'center', gap: t.space.xs }} title={d.name}>
                 {npc && (
                   <img
                     src={heroIconUrl(npc)} alt="" width={20} height={20}
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                    style={{ borderRadius: 3 }}
+                    style={{ borderRadius: t.radius.sm }}
                   />
                 )}
-                <span style={{ fontSize: 11 }}>{d.name}</span>
+                <span style={{ fontSize: t.font.sm }}>{d.name}</span>
               </span>
             );
           })}

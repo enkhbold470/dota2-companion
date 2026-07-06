@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { heroIconUrl } from '@dc/shared';
+import { t, btn, inputStyle, SectionLabel } from '../theme';
 
 export interface HeroOption { id: number; localized_name: string; name?: string }
 
@@ -30,36 +31,33 @@ export function EnemyPicker({ heroes, selected, onToggle, max = 5 }: EnemyPicker
   const atLimit = selected.length >= max;
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: 12 }}>Enemy heroes ({selected.length}/{max})</span>
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          style={{ fontSize: 11, cursor: 'pointer', background: '#111827', color: '#93c5fd', border: '1px solid #374151', borderRadius: 4, padding: '0 6px' }}
-        >
+    <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: t.space.md }}>
+        <SectionLabel>Enemy heroes ({selected.length}/{max})</SectionLabel>
+        <button type="button" onClick={() => setExpanded((v) => !v)} style={{ ...btn('ghost'), marginLeft: 'auto' }}>
           {expanded ? 'Hide list' : 'Browse all'}
         </button>
       </div>
 
       {selectedHeroes.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: t.space.xs }}>
           {selectedHeroes.map((h) => (
             <button
               key={h.id}
               onClick={() => onToggle(h.id)}
               title={`Remove ${h.localized_name}`}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer',
-                background: '#1e3a8a', color: '#fff', border: '1px solid #60a5fa', borderRadius: 4, padding: '1px 5px',
+                display: 'inline-flex', alignItems: 'center', gap: t.space.xs, cursor: 'pointer',
+                background: t.color.accentDeep, color: '#fff', border: `1px solid ${t.color.accent}`,
+                borderRadius: t.radius.md, padding: '1px 5px',
               }}
             >
               {h.name && (
                 <img src={heroIconUrl(h.name)} alt="" width={18} height={18}
                   onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ borderRadius: 2 }} />
               )}
-              <span style={{ fontSize: 10 }}>{h.localized_name}</span>
-              <span style={{ color: '#93c5fd' }}>×</span>
+              <span style={{ fontSize: t.font.xs }}>{h.localized_name}</span>
+              <span style={{ color: t.color.accentText }}>×</span>
             </button>
           ))}
         </div>
@@ -69,15 +67,12 @@ export function EnemyPicker({ heroes, selected, onToggle, max = 5 }: EnemyPicker
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search hero to add…"
-        style={{
-          width: '100%', boxSizing: 'border-box', fontSize: 12, padding: '3px 6px',
-          background: '#1f2937', color: '#e5e7eb', border: '1px solid #374151', borderRadius: 4,
-        }}
+        style={inputStyle}
       />
 
       {results.length > 0 && (
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))', gap: 4, marginTop: 6,
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(52px, 1fr))', gap: t.space.xs,
           maxHeight: expanded ? 224 : undefined, overflowY: expanded ? 'auto' : undefined,
         }}>
           {results.map((h) => {
@@ -93,14 +88,14 @@ export function EnemyPicker({ heroes, selected, onToggle, max = 5 }: EnemyPicker
                 style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
                   padding: '3px 2px', cursor: disabled ? 'not-allowed' : 'pointer',
-                  background: isSelected ? '#1e3a8a' : '#1f2937',
-                  border: isSelected ? '1px solid #60a5fa' : '1px solid #374151',
-                  borderRadius: 4, color: '#fff', opacity: disabled ? 0.35 : 1,
+                  background: isSelected ? t.color.accentDeep : t.color.inset,
+                  border: `1px solid ${isSelected ? t.color.accent : t.color.borderStrong}`,
+                  borderRadius: t.radius.md, color: '#fff', opacity: disabled ? 0.35 : 1,
                 }}
               >
                 {h.name && (
                   <img src={heroIconUrl(h.name)} alt="" width={28} height={28} loading="lazy"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ borderRadius: 3 }} />
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }} style={{ borderRadius: t.radius.sm }} />
                 )}
                 <span style={{ fontSize: 9, lineHeight: 1.1, textAlign: 'center' }}>{h.localized_name}</span>
               </button>
@@ -110,7 +105,7 @@ export function EnemyPicker({ heroes, selected, onToggle, max = 5 }: EnemyPicker
       )}
 
       {q !== '' && results.length === 0 && (
-        <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6 }}>No heroes match “{query}”.</div>
+        <div style={{ fontSize: t.font.sm, color: t.color.textFaint }}>No heroes match “{query}”.</div>
       )}
     </div>
   );

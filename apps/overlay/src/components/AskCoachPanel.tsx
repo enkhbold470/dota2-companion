@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t, btn, inputStyle } from '../theme';
 import { COACH_URL } from '../config';
 
 export interface AskCoachPanelProps {
@@ -45,34 +46,24 @@ export function AskCoachPanel({ getContext, endpoint = COACH_URL }: AskCoachPane
   };
 
   return (
-    <div style={{ fontSize: 12 }}>
-      <form style={{ display: 'flex', gap: 4 }} onSubmit={(e) => { e.preventDefault(); void runAsk(question); }}>
+    <div style={{ fontSize: t.font.base, display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
+      <form style={{ display: 'flex', gap: t.space.xs }} onSubmit={(e) => { e.preventDefault(); void runAsk(question); }}>
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask the coach…"
-          style={{
-            flex: 1, fontSize: 12, padding: '2px 6px',
-            background: '#1f2937', color: '#e5e7eb', border: '1px solid #374151', borderRadius: 4,
-          }}
+          style={{ ...inputStyle, flex: 1 }}
         />
-        <button type="submit" disabled={loading || question.trim() === ''} style={{ fontSize: 12 }}>
+        <button type="submit" disabled={loading || question.trim() === ''} style={btn('primary')}>
           {loading ? 'Asking…' : 'Ask'}
         </button>
       </form>
       {!loading && (
-        <button
-          type="button"
-          onClick={() => void runAsk(QUICK_QUESTION)}
-          style={{
-            marginTop: 6, fontSize: 11, cursor: 'pointer',
-            background: '#111827', color: '#93c5fd', border: '1px solid #374151', borderRadius: 4, padding: '2px 8px',
-          }}
-        >
+        <button type="button" onClick={() => void runAsk(QUICK_QUESTION)} style={{ ...btn('ghost'), alignSelf: 'flex-start' }}>
           ⚡ Quick read
         </button>
       )}
-      {answer !== null && <div style={{ marginTop: 6, color: '#e5e7eb' }}>{answer}</div>}
+      {answer !== null && <div style={{ color: t.color.text, lineHeight: t.line.normal }}>{answer}</div>}
     </div>
   );
 }

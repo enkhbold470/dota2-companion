@@ -5,6 +5,8 @@ import {
   buildThreatReport, recommendItems, buildSkillReadout, suggestNextSkill, coachTips,
 } from '@dc/shared';
 import { useGsiSocket } from './useGsiSocket';
+import { t, Panel, SectionLabel } from './theme';
+import { Logo } from './components/Logo';
 import { ConnectionBadge } from './components/ConnectionBadge';
 import { TimerPanel } from './components/TimerPanel';
 import { EconomyPanel } from './components/EconomyPanel';
@@ -82,52 +84,75 @@ export default function App() {
   });
 
   return (
-    <div style={{ fontFamily: 'system-ui', color: '#e5e7eb', background: 'rgba(17,24,39,0.85)', padding: 12, maxWidth: 360 }}>
-      <ConnectionBadge connected={connected} />
-      <div style={{ margin: '8px 0' }}>
-        <label style={{ fontSize: 12 }}>
-          Role:{' '}
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: t.space.md,
+      padding: t.space.lg, color: t.color.text, maxWidth: 460, margin: '0 auto',
+    }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: t.space.md }}>
+        <Logo size={30} />
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+          <span style={{ fontSize: t.font.md, fontWeight: t.weight.semibold, letterSpacing: 0.2 }}>Dota Coach</span>
+          <ConnectionBadge connected={connected} />
+        </div>
+        <label style={{ fontSize: t.font.base, color: t.color.textMuted, marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: t.space.sm }}>
+          Role
           <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
             <option value="core">core</option>
             <option value="support">support</option>
             <option value="unknown">unknown</option>
           </select>
         </label>
-      </div>
-      <TimerPanel
-        clock={clock}
-        dayNightLabel={dn ? (dn.isDay ? 'DAY' : 'NIGHT') : '—'}
-        secondsToTransition={dn ? dn.secondsToNextTransition : null}
-        runes={runes}
-        roshan={rosh}
-        onRoshanDown={() => setRoshKilledAt(clock)}
-      />
-      <hr style={{ borderColor: '#374151' }} />
-      <EconomyPanel grade={grade} />
-      <CoachPanel tips={tips} />
-      <hr style={{ borderColor: '#374151' }} />
-      <AiItemPanel
-        getContext={getItemContext}
-        signature={itemSignature}
-        ready={heroId !== null}
-        itemData={ITEM_DATA}
-        gold={gold}
-        fallbackRecs={recs}
-        hasEnemies={enemies.length > 0}
-      />
-      <hr style={{ borderColor: '#374151' }} />
-      <SkillPanel skills={skills} nextSkill={nextSkill} />
-      <hr style={{ borderColor: '#374151' }} />
-      <HeroAnalyzer
-        heroData={HERO_DATA}
-        ownHeroId={heroId}
-        ownHeroName={heroById(heroId)?.localizedName ?? null}
-        onHeroesDetected={(ids) => setEnemies(ids.slice(0, 5))}
-      />
-      <div style={{ height: 6 }} />
-      <EnemyPicker heroes={HERO_OPTIONS} selected={enemies} onToggle={toggleEnemy} />
-      <hr style={{ borderColor: '#374151' }} />
-      <AskCoachPanel getContext={getCoachContext} />
+      </header>
+
+      <Panel>
+        <TimerPanel
+          clock={clock}
+          dayNightLabel={dn ? (dn.isDay ? 'DAY' : 'NIGHT') : '—'}
+          secondsToTransition={dn ? dn.secondsToNextTransition : null}
+          runes={runes}
+          roshan={rosh}
+          onRoshanDown={() => setRoshKilledAt(clock)}
+        />
+      </Panel>
+
+      <Panel style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
+        <EconomyPanel grade={grade} />
+        <CoachPanel tips={tips} />
+      </Panel>
+
+      <Panel>
+        <AiItemPanel
+          getContext={getItemContext}
+          signature={itemSignature}
+          ready={heroId !== null}
+          itemData={ITEM_DATA}
+          gold={gold}
+          fallbackRecs={recs}
+          hasEnemies={enemies.length > 0}
+        />
+      </Panel>
+
+      {skills.length > 0 && (
+        <Panel>
+          <SectionLabel style={{ marginBottom: t.space.sm }}>Skills</SectionLabel>
+          <SkillPanel skills={skills} nextSkill={nextSkill} />
+        </Panel>
+      )}
+
+      <Panel style={{ display: 'flex', flexDirection: 'column', gap: t.space.md }}>
+        <HeroAnalyzer
+          heroData={HERO_DATA}
+          ownHeroId={heroId}
+          ownHeroName={heroById(heroId)?.localizedName ?? null}
+          onHeroesDetected={(ids) => setEnemies(ids.slice(0, 5))}
+        />
+        <EnemyPicker heroes={HERO_OPTIONS} selected={enemies} onToggle={toggleEnemy} />
+      </Panel>
+
+      <Panel>
+        <SectionLabel style={{ marginBottom: t.space.sm }}>Ask coach</SectionLabel>
+        <AskCoachPanel getContext={getCoachContext} />
+      </Panel>
     </div>
   );
 }

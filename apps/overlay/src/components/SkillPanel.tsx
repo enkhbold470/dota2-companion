@@ -1,4 +1,5 @@
 import { abilityImageUrl, type SkillReadout, type SkillSuggestion } from '@dc/shared';
+import { t, pill } from '../theme';
 
 function AbilityIcon({ abilityKey, size = 20 }: { abilityKey: string; size?: number }) {
   return (
@@ -9,14 +10,11 @@ function AbilityIcon({ abilityKey, size = 20 }: { abilityKey: string; size?: num
       height={size}
       loading="lazy"
       onError={(e) => { e.currentTarget.style.display = 'none'; }}
-      style={{ borderRadius: 3, flex: 'none' }}
+      style={{ borderRadius: t.radius.sm, flex: 'none' }}
     />
   );
 }
 
-const DMG_COLOR: Record<string, string> = {
-  Magical: '#a78bfa', Physical: '#f87171', Pure: '#fbbf24',
-};
 const DMG_LABEL: Record<string, string> = { Magical: 'M', Physical: 'P', Pure: 'Pure' };
 
 export interface SkillPanelProps {
@@ -27,47 +25,41 @@ export interface SkillPanelProps {
 export function SkillPanel({ skills, nextSkill }: SkillPanelProps) {
   if (skills.length === 0) return null;
   return (
-    <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+    <div style={{ fontSize: t.font.base, lineHeight: t.line.loose, display: 'flex', flexDirection: 'column', gap: t.space.xs }}>
       {nextSkill && (
-        <div style={{ marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div style={{ marginBottom: t.space.xs, display: 'flex', gap: t.space.sm, alignItems: 'center' }}>
           <AbilityIcon abilityKey={nextSkill.key} size={22} />
-          <span style={{ fontSize: 11, color: '#0f172a', background: '#4ade80', borderRadius: 3, padding: '0 5px', fontWeight: 600 }}>
+          <span style={{ fontSize: t.font.sm, color: '#0f172a', background: t.color.success, borderRadius: t.radius.sm, padding: '0 5px', fontWeight: t.weight.semibold }}>
             LEVEL UP
           </span>
           <strong>{nextSkill.name}</strong>
-          <span style={{ color: '#9ca3af' }}>{nextSkill.reason}</span>
+          <span style={{ color: t.color.textMuted }}>{nextSkill.reason}</span>
         </div>
       )}
       {skills.map((s) => {
         const pips = '●'.repeat(s.level) + '○'.repeat(Math.max(0, s.maxLevel - s.level));
-        const dmgColor = (s.dmgType !== null ? DMG_COLOR[s.dmgType] : undefined) ?? '#9ca3af';
+        const dmgColor = (s.dmgType !== null ? t.dmg[s.dmgType] : undefined) ?? t.color.textMuted;
         const dmgLabel = (s.dmgType !== null ? DMG_LABEL[s.dmgType] : undefined) ?? '?';
         return (
           <div
             key={s.key}
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', opacity: s.level === 0 ? 0.45 : 1 }}
+            style={{ display: 'flex', flexWrap: 'wrap', gap: t.space.sm, alignItems: 'center', opacity: s.level === 0 ? 0.45 : 1 }}
           >
             <AbilityIcon abilityKey={s.key} />
             <span>{s.name}</span>
-            <span style={{ letterSpacing: 1 }}>{pips}</span>
-            {s.passive && (
-              <span style={{ fontSize: 11, color: '#9ca3af', background: '#1f2937', borderRadius: 3, padding: '0 4px' }}>
-                passive
-              </span>
-            )}
+            <span style={{ letterSpacing: 1, color: t.color.accent }}>{pips}</span>
+            {s.passive && <span style={pill(t.color.textMuted)}>passive</span>}
             {s.damage !== null && (
               <span>
                 {s.damage}{' '}
-                <span style={{ fontSize: 11, color: dmgColor, background: '#1f2937', borderRadius: 3, padding: '0 4px' }}>
-                  {dmgLabel}
-                </span>
+                <span style={pill(dmgColor)}>{dmgLabel}</span>
               </span>
             )}
-            {s.damageNext !== null && <span style={{ color: '#6b7280' }}>→ {s.damageNext}</span>}
-            {s.cooldown !== null && <span style={{ fontSize: 11, color: '#9ca3af' }}>CD {s.cooldown}s</span>}
-            {s.manaCost !== null && <span style={{ fontSize: 11, color: '#9ca3af' }}>{s.manaCost} mana</span>}
+            {s.damageNext !== null && <span style={{ color: t.color.textFaint }}>→ {s.damageNext}</span>}
+            {s.cooldown !== null && <span style={{ fontSize: t.font.sm, color: t.color.textMuted }}>CD {s.cooldown}s</span>}
+            {s.manaCost !== null && <span style={{ fontSize: t.font.sm, color: t.color.textMuted }}>{s.manaCost} mana</span>}
             {s.remainingCooldown !== null && s.remainingCooldown > 0 && (
-              <span style={{ fontSize: 11, color: '#fbbf24' }}>on CD {s.remainingCooldown}s</span>
+              <span style={{ fontSize: t.font.sm, color: t.color.warn }}>on CD {s.remainingCooldown}s</span>
             )}
           </div>
         );

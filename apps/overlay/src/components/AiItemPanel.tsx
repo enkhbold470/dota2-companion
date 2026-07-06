@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { matchItemKeys, itemImageUrl, type ItemDataMap, type ItemRecommendation } from '@dc/shared';
+import { t, btn, pill, SectionLabel } from '../theme';
 import { ItemAdvicePanel } from './ItemAdvicePanel';
 import { ITEM_BUILD_URL } from '../config';
 
@@ -71,7 +72,7 @@ export function AiItemPanel({
   if (status === 'no-key') {
     return (
       <div>
-        <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 4 }}>
+        <div style={{ fontSize: t.font.sm, color: t.color.textMuted, marginBottom: t.space.xs }}>
           Add OPENAI_API_KEY on the listener for hero-tuned AI builds — showing rule-based counters:
         </div>
         <ItemAdvicePanel recs={fallbackRecs} gold={gold} hasEnemies={hasEnemies} />
@@ -87,63 +88,51 @@ export function AiItemPanel({
     styleRef.current = next;
     if (ready) void fetchBuild();
   };
-  const styleBtn = (s: Style): CSSProperties => ({
-    fontSize: 10, cursor: 'pointer', borderRadius: 4, padding: '0 6px',
-    border: '1px solid #374151',
-    background: style === s ? (s === 'fun' ? '#7c3aed' : '#2563eb') : '#111827',
-    color: style === s ? '#fff' : '#93c5fd',
-  });
 
   return (
-    <div style={{ fontSize: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style={{ fontSize: 10, letterSpacing: 0.6, textTransform: 'uppercase', color: '#c084fc' }}>
-          AI item build
-        </span>
+    <div style={{ fontSize: t.font.base }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: t.space.sm, marginBottom: t.space.sm }}>
+        <SectionLabel tone="ai">AI item build</SectionLabel>
         <div style={{ display: 'inline-flex', gap: 3 }}>
-          <button type="button" onClick={() => pickStyle('meta')} style={styleBtn('meta')}>Meta</button>
-          <button type="button" onClick={() => pickStyle('fun')} style={styleBtn('fun')}>Fun 🎉</button>
+          <button type="button" onClick={() => pickStyle('meta')} style={btn('toggle', { active: style === 'meta', tone: 'meta' })}>Meta</button>
+          <button type="button" onClick={() => pickStyle('fun')} style={btn('toggle', { active: style === 'fun', tone: 'ai' })}>Fun 🎉</button>
         </div>
         <button
           type="button"
           onClick={() => void fetchBuild()}
           disabled={status === 'loading' || !ready}
-          style={{ fontSize: 11, cursor: 'pointer', background: '#111827', color: '#93c5fd', border: '1px solid #374151', borderRadius: 4, padding: '0 6px', marginLeft: 'auto' }}
+          style={{ ...btn('ghost'), marginLeft: 'auto' }}
         >
           {status === 'loading' ? '…' : '↻'}
         </button>
       </div>
 
-      {!ready && <div style={{ color: '#6b7280' }}>Waiting for your hero…</div>}
-      {ready && status === 'loading' && items.length === 0 && <div style={{ color: '#93c5fd' }}>Thinking…</div>}
-      {ready && status === 'error' && <div style={{ color: '#f87171' }}>Coach unavailable — is the listener running?</div>}
-      {ready && status === 'ok' && items.length === 0 && <div style={{ color: '#9ca3af' }}>No build returned — try refresh.</div>}
+      {!ready && <div style={{ color: t.color.textFaint }}>Waiting for your hero…</div>}
+      {ready && status === 'loading' && items.length === 0 && <div style={{ color: t.color.accentText }}>Thinking…</div>}
+      {ready && status === 'error' && <div style={{ color: t.color.danger }}>Coach unavailable — is the listener running?</div>}
+      {ready && status === 'ok' && items.length === 0 && <div style={{ color: t.color.textMuted }}>No build returned — try refresh.</div>}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
         {items.map((it, idx) => {
           const key = keys[idx];
           const cost = key ? itemData[key]?.cost ?? null : null;
           const affordable = gold !== null && cost !== null && gold >= cost;
           return (
-            <div key={`${it.name}-${idx}`} style={{ display: 'flex', gap: 6 }}>
+            <div key={`${it.name}-${idx}`} style={{ display: 'flex', gap: t.space.sm }}>
               {key && (
                 <img
                   src={itemImageUrl(key)} alt="" width={33} height={24} loading="lazy"
                   onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
-                  style={{ borderRadius: 3, flex: 'none', marginTop: 1 }}
+                  style={{ borderRadius: t.radius.sm, flex: 'none', marginTop: 1 }}
                 />
               )}
               <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'baseline' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: t.space.sm, alignItems: 'baseline' }}>
                   <strong>{it.name}</strong>
-                  {cost !== null && <span style={{ color: '#9ca3af' }}>{cost}g</span>}
-                  {affordable && (
-                    <span style={{ fontSize: 11, color: '#4ade80', background: '#1f2937', borderRadius: 3, padding: '0 4px' }}>
-                      BUY NOW
-                    </span>
-                  )}
+                  {cost !== null && <span style={{ color: t.color.textMuted }}>{cost}g</span>}
+                  {affordable && <span style={pill(t.color.success)}>BUY NOW</span>}
                 </div>
-                {it.reason && <div style={{ fontSize: 11, color: '#9ca3af' }}>{it.reason}</div>}
+                {it.reason && <div style={{ fontSize: t.font.sm, color: t.color.textMuted }}>{it.reason}</div>}
               </div>
             </div>
           );
