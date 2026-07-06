@@ -34,15 +34,22 @@ Copy `gamestate_integration_dota2-companion.cfg` into your Dota 2 install:
 - macOS: `~/Library/Application Support/Steam/steamapps/common/dota 2 beta/game/dota/cfg/gamestate_integration/`
 - Windows: `<Steam>\steamapps\common\dota 2 beta\game\dota\cfg\gamestate_integration\`
 
-Run the companion:
+Run the companion as **one process** (builds the UI, then serves UI + API + WebSocket on a single port):
 
 ```bash
-GSI_TOKEN=$(cat .gsi-token) pnpm listener   # terminal 1
-pnpm overlay                                # terminal 2 → http://127.0.0.1:5273
+pnpm start        # → open http://127.0.0.1:53000
 ```
 
-Launch Dota 2 and enter a match — the overlay updates live. Pick the enemy
-heroes in the overlay once the draft locks to unlock counter-item advice.
+`pnpm start` reads `GSI_TOKEN` (and optional `OPENAI_API_KEY`) from `.env` — see
+`.env.example`. Launch Dota 2 and enter a match; the overlay updates live. Pick
+the enemy heroes (search, or paste a screenshot) to unlock counter-item advice.
+
+### Two-terminal dev loop (hot reload)
+
+```bash
+GSI_TOKEN=$(cat .gsi-token) pnpm listener   # terminal 1 (API/WS on :53000)
+pnpm overlay                                # terminal 2 → http://127.0.0.1:5273
+```
 
 ### Enable Ask Coach (optional, needs an OpenAI key)
 

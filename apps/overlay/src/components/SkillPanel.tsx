@@ -1,14 +1,43 @@
-import type { SkillReadout } from '@dc/shared';
+import { abilityImageUrl, type SkillReadout, type SkillSuggestion } from '@dc/shared';
+
+function AbilityIcon({ abilityKey, size = 20 }: { abilityKey: string; size?: number }) {
+  return (
+    <img
+      src={abilityImageUrl(abilityKey)}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+      style={{ borderRadius: 3, flex: 'none' }}
+    />
+  );
+}
 
 const DMG_COLOR: Record<string, string> = {
   Magical: '#a78bfa', Physical: '#f87171', Pure: '#fbbf24',
 };
 const DMG_LABEL: Record<string, string> = { Magical: 'M', Physical: 'P', Pure: 'Pure' };
 
-export function SkillPanel({ skills }: { skills: SkillReadout[] }) {
+export interface SkillPanelProps {
+  skills: SkillReadout[];
+  nextSkill?: SkillSuggestion | null;
+}
+
+export function SkillPanel({ skills, nextSkill }: SkillPanelProps) {
   if (skills.length === 0) return null;
   return (
     <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+      {nextSkill && (
+        <div style={{ marginBottom: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <AbilityIcon abilityKey={nextSkill.key} size={22} />
+          <span style={{ fontSize: 11, color: '#0f172a', background: '#4ade80', borderRadius: 3, padding: '0 5px', fontWeight: 600 }}>
+            LEVEL UP
+          </span>
+          <strong>{nextSkill.name}</strong>
+          <span style={{ color: '#9ca3af' }}>{nextSkill.reason}</span>
+        </div>
+      )}
       {skills.map((s) => {
         const pips = '●'.repeat(s.level) + '○'.repeat(Math.max(0, s.maxLevel - s.level));
         const dmgColor = (s.dmgType !== null ? DMG_COLOR[s.dmgType] : undefined) ?? '#9ca3af';
@@ -16,8 +45,9 @@ export function SkillPanel({ skills }: { skills: SkillReadout[] }) {
         return (
           <div
             key={s.key}
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'baseline', opacity: s.level === 0 ? 0.45 : 1 }}
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', opacity: s.level === 0 ? 0.45 : 1 }}
           >
+            <AbilityIcon abilityKey={s.key} />
             <span>{s.name}</span>
             <span style={{ letterSpacing: 1 }}>{pips}</span>
             {s.passive && (

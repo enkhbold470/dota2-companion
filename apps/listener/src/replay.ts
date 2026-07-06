@@ -1,3 +1,4 @@
+import './load-env';
 import { readFile } from 'node:fs/promises';
 
 const token = process.env.GSI_TOKEN;

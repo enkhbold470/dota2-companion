@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { NormalizedState } from '@dc/shared';
+import { WS_URL } from './config';
 
-export function useGsiSocket(url = 'ws://127.0.0.1:53000/ws') {
+export function useGsiSocket(url = WS_URL) {
   const [state, setState] = useState<NormalizedState | null>(null);
   const [connected, setConnected] = useState(false);
 

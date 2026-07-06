@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "pnpm -r test",
     "build": "pnpm -r build",
+    "start": "pnpm --filter @dc/overlay build && node --import tsx apps/listener/src/main.ts",
     "listener": "pnpm --filter @dc/listener dev",
     "overlay": "pnpm --filter @dc/overlay dev",
     "replay": "pnpm --filter @dc/listener replay",
@@ -14,7 +17,8 @@
     "gen-data": "node scripts/gen-coach-data.mjs"
   },
   "devDependencies": {
-    "dotaconstants": "^8.0.0",
+    "dotaconstants": "^10.8.0",
+    "tsx": "^4.16.0",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
   }

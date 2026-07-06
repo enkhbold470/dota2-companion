@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildSkillReadout } from './skills';
+import { buildSkillReadout, suggestNextSkill } from './skills';
 import { ABILITY_DATA } from './data';
-import type { AbilityDataMap } from './coaching-types';
+import type { AbilityDataMap, SkillReadout } from './coaching-types';
 import type { NormalizedAbility } from './types';
 
 function ability(name: string, level: number, overrides: Partial<NormalizedAbility> = {}): NormalizedAbility {
@@ -154,5 +154,79 @@ describe('buildSkillReadout', () => {
 
     expect(drain?.name).toBe('Mana Drain');
     expect(drain?.damage).toBeNull();
+  });
+});
+
+describe('suggestNextSkill', () => {
+  const readout = (over: Partial<SkillReadout> = {}): SkillReadout => ({
+    key: 'k', name: 'Skill', level: 1, maxLevel: 4, damage: null, damageNext: 50,
+    dmgType: 'Magical', cooldown: 10, remainingCooldown: 0, manaCost: 100,
+    canCast: true, ultimate: false, passive: false, ...over,
+  });
+
+  it('returns null when every skill is maxed', () => {
+    expect(suggestNextSkill([readout({ level: 4, maxLevel: 4 })], 25)).toBeNull();
+  });
+
+  it('takes the ultimate the moment its level unlocks', () => {
+    const skills = [
+      readout({ key: 'q', name: 'Nuke', level: 2, damageNext: 300 }),
+      readout({ key: 'r', name: 'Ult', level: 0, maxLevel: 3, ultimate: true, damageNext: 400 }),
+    ];
+    expect(suggestNextSkill(skills, 6)?.key).toBe('r');   // hero level 6 → first ult point
+  });
+
+  it('does NOT suggest the ultimate before it unlocks', () => {
+    const skills = [
+      readout({ key: 'q', name: 'Nuke', level: 1, damageNext: 300 }),
+      readout({ key: 'r', name: 'Ult', level: 0, maxLevel: 3, ultimate: true, damageNext: 999 }),
+    ];
+    expect(suggestNextSkill(skills, 4)?.key).toBe('q');   // level 4 → no ult point yet
+  });
+
+  it('otherwise picks the biggest damage spike', () => {
+    const skills = [
+      readout({ key: 'small', level: 1, damageNext: 60 }),
+      readout({ key: 'big', level: 1, damageNext: 220 }),
+    ];
+    const s = suggestNextSkill(skills, 8);
+    expect(s?.key).toBe('big');
+    expect(s?.reason).toContain('+220');
+  });
+
+  it('rounds out the build when no damage numbers are available', () => {
+    const skills = [
+      readout({ key: 'passiveA', level: 2, damageNext: null }),
+      readout({ key: 'passiveB', level: 0, damageNext: null }),
+    ];
+    expect(suggestNextSkill(skills, 8)?.key).toBe('passiveB'); // lowest level first
+  });
+
+  // Regression: on Zeus it used to say "level up Nimbus" — a scepter-granted
+  // ability (non-standard max level) that can't take skill points.
+  it('never suggests a scepter/granted ability, and takes the ult instead', () => {
+    const skills = [
+      readout({ key: 'zeus_arc_lightning', level: 4, maxLevel: 4 }),        // maxed basic
+      readout({ key: 'zeus_lightning_bolt', level: 4, maxLevel: 4 }),        // maxed basic
+      readout({ key: 'zeus_nimbus', level: 1, maxLevel: 5, damageNext: null }), // scepter grant
+      readout({ key: 'zeus_thundergods_wrath', level: 2, maxLevel: 3, ultimate: true, damageNext: 650 }),
+    ];
+    expect(suggestNextSkill(skills, 25)?.key).toBe('zeus_thundergods_wrath');
+  });
+
+  it('never suggests an innate ability', () => {
+    const skills = [
+      readout({ key: 'basic', level: 4, maxLevel: 4 }),
+      readout({ key: 'innate', level: 0, maxLevel: 4, isInnate: true, damageNext: 300 }),
+    ];
+    expect(suggestNextSkill(skills, 10)).toBeNull();
+  });
+
+  it('suggests nothing when only the ult remains but it is not yet unlockable', () => {
+    const skills = [
+      readout({ key: 'a', level: 4, maxLevel: 4 }),
+      readout({ key: 'ult', level: 1, maxLevel: 3, ultimate: true }),
+    ];
+    expect(suggestNextSkill(skills, 10)).toBeNull(); // level 10 → 2nd ult point needs 12
   });
 });

@@ -54,6 +54,15 @@ describe('recommendItems', () => {
     expect(recs.map((r) => r.itemKey)).toContain('pipe');
   });
 
+  it('tags each recommendation with an aggressive/defensive/utility category', () => {
+    const flags = [...magicHeavyFlags, flag('invisibility', 32, 'Riki', 'Cloak and Dagger')];
+    const recs = recommendItems(makeInput({ threat: report(flags), role: 'unknown' }), ITEM_DATA);
+    const cat = (key: string) => recs.find((r) => r.itemKey === key)?.category;
+    expect(cat('black_king_bar')).toBe('defensive');
+    expect(cat('dust')).toBe('utility');
+    for (const r of recs) expect(['aggressive', 'defensive', 'utility']).toContain(r.category);
+  });
+
   it('gives supports glimmer/sentries instead of core items', () => {
     const flags = [...magicHeavyFlags, flag('invisibility', 32, 'Riki', 'Cloak and Dagger')];
     const recs = recommendItems(makeInput({ threat: report(flags), role: 'support' }), ITEM_DATA);

@@ -62,6 +62,10 @@ export interface ThreatReport {
 }
 
 // ---- Item recommendations (items.ts) ----
+// How a counter-item is meant to be used: swing a fight (aggressive), stay alive
+// (defensive), or enable/disable (utility — detection, dispels, saves).
+export type ItemCategory = 'aggressive' | 'defensive' | 'utility';
+
 export interface ItemRecommendation {
   itemKey: string;   // dotaconstants key, e.g. 'black_king_bar'
   itemName: string;  // display name
@@ -69,6 +73,7 @@ export interface ItemRecommendation {
   affordable: boolean;
   score: number;
   reasons: string[]; // human explanations citing enemy heroes/abilities
+  category?: ItemCategory;
 }
 
 export interface ItemEngineInput {
@@ -95,6 +100,14 @@ export interface SkillReadout {
   canCast: boolean | null;
   ultimate: boolean;
   passive: boolean;
+  isInnate?: boolean; // innate/granted (e.g. scepter) — not leveled with skill points
+}
+
+// ---- Skill build suggestion (skills.ts) ----
+export interface SkillSuggestion {
+  key: string;
+  name: string;
+  reason: string;
 }
 
 // ---- Coach tips (coach.ts) ----

@@ -3,6 +3,7 @@
 // output is checked in so runtime never loads the full 2.5MB of constants.
 import { createRequire } from 'node:module';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,11 +11,20 @@ const require = createRequire(
   path.join(fileURLToPath(new URL('..', import.meta.url)), 'package.json'),
 );
 
-const abilities = require('dotaconstants/build/abilities.json');
-const heroAbilities = require('dotaconstants/build/hero_abilities.json');
-const heroes = require('dotaconstants/build/heroes.json');
-const items = require('dotaconstants/build/items.json');
-const dcVersion = require('dotaconstants/package.json').version;
+// dotaconstants 10.x restricts its `exports` to the package index, so the old
+// `dotaconstants/build/*.json` subpath requires no longer resolve. Pull the
+// datasets off the index instead, and read the package version straight off
+// the resolved package.json on disk (that subpath isn't exported either).
+const dc = require('dotaconstants');
+const abilities = dc.abilities;
+const heroAbilities = dc.hero_abilities;
+const heroes = dc.heroes;
+const items = dc.items;
+const dcVersion = JSON.parse(
+  readFileSync(path.join(path.dirname(require.resolve('dotaconstants')), 'package.json'), 'utf8'),
+).version;
+// The trailing entry of dc.patch is the latest major game patch (e.g. "7.41").
+const gamePatch = dc.patch?.[dc.patch.length - 1]?.name ?? null;
 
 const OUT_DIR = path.join(fileURLToPath(new URL('..', import.meta.url)), 'packages/shared/src/data');
 
@@ -119,5 +129,5 @@ const write = async (name, data) => {
 await write('hero-data.json', heroesOut);
 await write('ability-data.json', abilitiesOut);
 await write('item-data.json', itemsOut);
-await write('data-meta.json', { source: 'dotaconstants', version: dcVersion });
-console.log(`Pruned from dotaconstants@${dcVersion}.`);
+await write('data-meta.json', { source: 'dotaconstants', version: dcVersion, gamePatch });
+console.log(`Pruned from dotaconstants@${dcVersion} (game patch ${gamePatch}).`);
