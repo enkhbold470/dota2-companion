@@ -44,6 +44,19 @@ pnpm start        # → open http://127.0.0.1:53000
 `.env.example`. Launch Dota 2 and enter a match; the overlay updates live. Pick
 the enemy heroes (search, or paste a screenshot) to unlock counter-item advice.
 
+## Windows app (installable .exe)
+
+A one-click desktop build lives in `apps/desktop` (Electron). It bundles the
+listener + overlay into a single window, generates the GSI token on first run,
+and auto-installs the `.cfg` into Dota if it can find your Steam folder.
+
+- **Get it:** download `Dota 2 Companion Setup *.exe` from the latest GitHub
+  release (built by `.github/workflows/release.yml` on a Windows runner), or
+  build locally on Windows: `pnpm install && pnpm --filter @dc/overlay build`,
+  then `cd apps/desktop && npm install && npm run dist` → `apps/desktop/release/`.
+- **AI features:** put your key in `openai-key.txt` inside the app's user-data
+  folder (the first-run dialog shows the path), or set `OPENAI_API_KEY`.
+
 ### Two-terminal dev loop (hot reload)
 
 ```bash
