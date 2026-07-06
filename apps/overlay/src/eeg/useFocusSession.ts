@@ -9,8 +9,8 @@ import { NeuroFocusSource, type NeuroFocusStatus } from './neurofocusSource';
 
 export type FocusMode = 'off' | 'device' | 'demo';
 
-const WINDOW = 512;              // ~2 s at 250 Hz — the analysis window
-const MAX_BUFFER = 2048;         // ring-buffer cap for band-power raw counts
+const WINDOW = 1024;             // ~1.7 s at 600 SPS — the analysis window (df ≈ 0.6 Hz)
+const MAX_BUFFER = 4096;         // ring-buffer cap for band-power raw counts
 const TICK_MS = 1000;            // compute focus once per second
 const LIVE_WINDOW = 180;         // rolling readings kept for the always-on live strip (~3 min)
 const MAX_TIMELINE = 5400;       // recorded focus timeline cap (~90 min at 1 Hz)
@@ -230,7 +230,9 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
         const buf = buffer.current;
         if (buf.length < 64) return;               // not enough signal yet
         const dt = Math.max(0.5, TICK_MS / 1000);
-        const rate = Math.min(512, Math.max(120, sinceTick.current / dt)); // measured sps
+        // Firmware streams ADS1220 at 600 SPS; measure it live (BLE drops sag it a
+        // little) and clamp to a sane band so the periodogram's Hz axis is right.
+        const rate = Math.min(700, Math.max(200, sinceTick.current / dt)); // measured sps
         sinceTick.current = 0;
         const win = buf.slice(-WINDOW);
         quality = contactQuality(win);

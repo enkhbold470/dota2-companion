@@ -120,7 +120,11 @@ export function contactQuality(samples: readonly number[]): 0 | 1 | 2 | 3 {
   const FULL_SCALE = 1 << 23;                  // 8_388_608
   const railedLow = min <= 1000;
   const railedHigh = max >= FULL_SCALE - 1000;
-  const flat = std < 50;                        // essentially DC — no EEG
+  // Real single-channel EEG rides as only tens–hundreds of counts on the ADS1220's
+  // ~mid-scale DC bias (LSB ≈ 393 nV, ~8 µV noise floor ≈ 20 counts), so the "flat"
+  // gate must sit near the noise floor — a higher bar falsely rejects a working but
+  // low-amplitude signal as "no signal". Only an essentially-DC window is unusable.
+  const flat = std < 12;                        // ≈ 5 µV — essentially DC, no biosignal
   const clipping = railedLow && railedHigh;     // swinging rail-to-rail = EMG/motion
 
   if (flat) return 0;

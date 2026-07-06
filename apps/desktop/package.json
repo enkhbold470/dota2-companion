@@ -1,6 +1,6 @@
 {
   "name": "@dc/desktop",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Dota 2 Companion desktop app (Electron)",
   "author": "enkhbold470",
