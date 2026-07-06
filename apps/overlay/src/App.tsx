@@ -2,20 +2,21 @@ import { useMemo, useState } from 'react';
 import {
   dayNight, runeTimers, roshanTimer, gradeEconomy, type Role,
   HERO_DATA, ABILITY_DATA, ITEM_DATA, heroById,
-  buildThreatReport, recommendItems, buildSkillReadout, coachTips,
+  buildThreatReport, recommendItems, buildSkillReadout, suggestNextSkill, coachTips,
 } from '@dc/shared';
 import { useGsiSocket } from './useGsiSocket';
 import { ConnectionBadge } from './components/ConnectionBadge';
 import { TimerPanel } from './components/TimerPanel';
 import { EconomyPanel } from './components/EconomyPanel';
 import { EnemyPicker, type HeroOption } from './components/EnemyPicker';
+import { HeroAnalyzer } from './components/HeroAnalyzer';
 import { CoachPanel } from './components/CoachPanel';
-import { ItemAdvicePanel } from './components/ItemAdvicePanel';
+import { AiItemPanel } from './components/AiItemPanel';
 import { SkillPanel } from './components/SkillPanel';
 import { AskCoachPanel } from './components/AskCoachPanel';
 
 const HERO_OPTIONS: HeroOption[] = Object.entries(HERO_DATA)
-  .map(([id, h]) => ({ id: Number(id), localized_name: h.localizedName }))
+  .map(([id, h]) => ({ id: Number(id), localized_name: h.localizedName, name: h.name }))
   .sort((a, b) => a.localized_name.localeCompare(b.localized_name));
 
 export default function App() {
@@ -44,10 +45,30 @@ export default function App() {
     [threat, role, gold, clock, ownedItems, heroId],
   );
   const skills = useMemo(() => buildSkillReadout(state?.abilities ?? [], ABILITY_DATA), [state?.abilities]);
+  const heroLevel = state?.hero.level ?? null;
+  const nextSkill = useMemo(() => suggestNextSkill(skills, heroLevel), [skills, heroLevel]);
   const tips = useMemo(() => (state ? coachTips({ state, role, threat }) : []), [state, role, threat]);
 
   const toggleEnemy = (id: number) =>
     setEnemies((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 5 ? [...prev, id] : prev);
+
+  // Auto-refresh the AI build only when the draft/hero/role changes, not per gold tick.
+  const itemSignature = `${heroId ?? 'none'}|${role}|${[...enemies].sort((a, b) => a - b).join(',')}`;
+  const getItemContext = () => ({
+    hero: {
+      name: heroById(heroId)?.localizedName ?? null,
+      attackType: heroById(heroId)?.attackType ?? null,
+      level: state?.hero.level ?? null,
+    },
+    hasScepter: state?.hero.hasScepter ?? false,
+    hasShard: state?.hero.hasShard ?? false,
+    role,
+    gold,
+    netWorth: state?.economy.netWorth ?? null,
+    clock,
+    items: state?.items ?? [],
+    enemies: threat.enemies.map((e) => e.heroName),
+  });
 
   const getCoachContext = () => ({
     role,
@@ -85,10 +106,25 @@ export default function App() {
       <EconomyPanel grade={grade} />
       <CoachPanel tips={tips} />
       <hr style={{ borderColor: '#374151' }} />
-      <ItemAdvicePanel recs={recs} gold={gold} hasEnemies={enemies.length > 0} />
+      <AiItemPanel
+        getContext={getItemContext}
+        signature={itemSignature}
+        ready={heroId !== null}
+        itemData={ITEM_DATA}
+        gold={gold}
+        fallbackRecs={recs}
+        hasEnemies={enemies.length > 0}
+      />
       <hr style={{ borderColor: '#374151' }} />
-      <SkillPanel skills={skills} />
+      <SkillPanel skills={skills} nextSkill={nextSkill} />
       <hr style={{ borderColor: '#374151' }} />
+      <HeroAnalyzer
+        heroData={HERO_DATA}
+        ownHeroId={heroId}
+        ownHeroName={heroById(heroId)?.localizedName ?? null}
+        onHeroesDetected={(ids) => setEnemies(ids.slice(0, 5))}
+      />
+      <div style={{ height: 6 }} />
       <EnemyPicker heroes={HERO_OPTIONS} selected={enemies} onToggle={toggleEnemy} />
       <hr style={{ borderColor: '#374151' }} />
       <AskCoachPanel getContext={getCoachContext} />

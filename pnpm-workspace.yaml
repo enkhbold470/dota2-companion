@@ -1,6 +1,9 @@
 packages:
   - "packages/*"
   - "apps/*"
+  # The Electron app is packaged in isolation (its own npm install on the Windows
+  # runner) so Electron never enters the main lockfile or slows the test CI.
+  - "!apps/desktop"
 allowBuilds:
   esbuild: true
 onlyBuiltDependencies:

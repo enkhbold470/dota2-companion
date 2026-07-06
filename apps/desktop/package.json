@@ -1,0 +1,17 @@
+{
+  "name": "@dc/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dota 2 Companion desktop app (Electron)",
+  "author": "enkhbold470",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build:main": "esbuild src/main.ts --bundle --platform=node --format=cjs --target=node20 --external:electron --outfile=dist/main.cjs",
+    "dist": "npm run build:main && electron-builder --win --config electron-builder.yml --publish never"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3",
+    "esbuild": "^0.23.1"
+  }
+}

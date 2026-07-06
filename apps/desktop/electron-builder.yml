@@ -1,0 +1,27 @@
+appId: com.enkhbold470.dota2companion
+productName: Dota 2 Companion
+copyright: Read-only, advisory-only. Uses only Valve GSI.
+
+directories:
+  output: release
+
+# The main process is bundled to a single self-contained file, so we only ship
+# that plus the built overlay (as an extra resource served by the listener).
+files:
+  - dist/**
+  - package.json
+
+extraResources:
+  - from: ../overlay/dist
+    to: overlay
+
+win:
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Dota 2 Companion

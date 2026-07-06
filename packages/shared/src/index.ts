@@ -12,3 +12,6 @@ export * from './threats';
 export * from './items';
 export * from './skills';
 export * from './coach';
+export * from './heromatch';
+export * from './itemmatch';
+export * from './assets';

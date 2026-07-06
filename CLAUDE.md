@@ -1,0 +1,65 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Commands
+
+Package manager is **pnpm** with a workspace (`packages/*`, `apps/*`). Requires Node ≥ 20.
+
+```bash
+pnpm install                # bootstrap workspace
+pnpm test                   # run vitest across every workspace (recursive)
+pnpm build                  # tsc across every workspace
+pnpm --filter @dc/shared test         # tests for one package
+pnpm --filter @dc/shared test skills  # single test file (vitest name-substring filter)
+
+pnpm gen-cfg                # emits gamestate_integration_dota2-companion.cfg + .gsi-token
+pnpm gen-data               # regenerates packages/shared/src/data/*.json from dotaconstants
+pnpm start                  # PROD: builds overlay, then one process serves UI+API+WS on :53000
+pnpm listener               # apps/listener dev (needs GSI_TOKEN)
+pnpm overlay                # apps/overlay dev (Vite on :5273)
+pnpm replay                 # apps/listener replay fixtures/sample-match.json
+```
+
+`pnpm start` is the shippable single-process entry: the listener serves the built overlay (`apps/overlay/dist`) via `@fastify/static`, so UI, WebSocket, and API share one origin on `:53000` (no CORS in prod). `apps/overlay/src/config.ts` picks endpoints — `:53000` in dev (`import.meta.env.DEV`), same-origin when packaged. CI (`.github/workflows/ci.yml`) runs `pnpm test` + `pnpm build` on push/PR.
+
+The hot-reload dev loop uses **three terminals**: `pnpm listener`, `pnpm overlay`, and (for dev without Dota) `pnpm replay`. The listener needs `GSI_TOKEN` and (for Ask Coach) `OPENAI_API_KEY`. Put both in a repo-root `.env` (gitignored; see `.env.example`) — `apps/listener/src/load-env.ts` loads it **with override** at process start, so a globally-exported `OPENAI_API_KEY` (e.g. a `~/.bashrc` export pointing at another provider) can't shadow the project key. Without `OPENAI_API_KEY` the `/coach` endpoint returns `501 no-key` and the rest of the app is unaffected. `load-env.ts` is imported first in `main.ts`/`replay.ts`; don't rely on `node --env-file` here — its precedence is the opposite (real env wins over the file).
+
+## Architecture
+
+Three workspaces, one direction of data flow:
+
+```
+Dota 2 client ──HTTP POST──▶ apps/listener ──WebSocket──▶ apps/overlay
+                            (Fastify :53000)             (React/Vite :5273)
+                                    │
+                                    │ optional: browser POST /coach ──▶ OpenAI gpt-4o
+```
+
+- **`packages/shared`** — all pure logic. Every module (`normalize`, `timers`, `runes`, `roshan`, `economy`, `threats`, `items`, `skills`, `coach`, `format`, `auth`) is a pure function tree with static data passed in as an argument. The overlay and listener both depend on it; static data lives inside it as pre-pruned JSON. No I/O, no framework imports.
+- **`apps/listener`** — Fastify HTTP server. `POST /` receives raw GSI, authenticates via `auth.token` from the payload against `GSI_TOKEN`, calls `normalizeGsi`, and pushes the `NormalizedState` into `Hub` (a tiny latest-value pub/sub). `GET /ws` is the fan-out WebSocket (sends the latest snapshot on connect, then every update). `POST /coach` proxies to OpenAI, gated by `OPENAI_API_KEY`, with CORS restricted to the overlay origin (`http://127.0.0.1:5273` by default; override with `COACH_ALLOW_ORIGIN`) so a random tab can't spend the key.
+- **`apps/overlay`** — React (Vite). `useGsiSocket` maintains a resilient WS to `ws://127.0.0.1:53000/ws` with a 1s reconnect loop. `App.tsx` is the composition root: it derives every panel (timers, economy grade, threat report, item recs, skill readout, coach tips, ask coach) from the incoming `NormalizedState` plus the user-picked enemy heroes and role. Everything below `App.tsx` is a dumb presentational component.
+
+### The hot loop is deterministic on purpose
+
+The coaching engines (`threats.ts`, `items.ts`, `skills.ts`, `coach.ts`) are a rules engine over the pruned static data — no LLM in the tick path. LLM calls (`gpt-4o`) live in listener routes and are only fired on explicit/debounced user actions, never per GSI tick: `coach-route.ts` (Ask Coach + Quick read) and `item-route.ts` (`POST /item-build`, JSON-mode hero-tuned item builds). The overlay's `AiItemPanel` is the primary item advice (auto-refreshes on draft/hero/role change, plus a manual refresh); the deterministic `items.ts` engine is kept as the **no-key fallback**. When adding coaching logic that must run every tick, keep it inside `packages/shared` and unit-testable; do **not** reach for network calls in the live path.
+
+### Static data pipeline
+
+`packages/shared/src/data/{hero-data,ability-data,item-data,data-meta}.json` are **generated artifacts checked in to the repo**. Source is `scripts/gen-coach-data.mjs`, which prunes ~2.5 MB of `dotaconstants` down to ~250 KB by filtering damage/duration attribs, normalizing `bkbPierce`/`dispellable`/`targetTeam` enums, and merging facet-gated abilities into each hero's list (we can't tell which facet the player picked, so all appear). On patch day: `pnpm up dotaconstants && pnpm gen-data`, then commit the diff. Do not hand-edit these JSON files.
+
+### Normalization invariants worth knowing
+
+- `normalizeGsi` filters cosmetic and talent pseudo-abilities via a regex (`special_bonus`, `plus_`, `seasonal_`, `abyssal_underlord_portal_warp`); real ability lists in `NormalizedState.abilities` are already clean.
+- `hasTp` reads only slot `teleport0` — not the backpack or inventory slots.
+- `noUncheckedIndexedAccess: true` is set in `tsconfig.base.json`, so `arr[i]` is `T | undefined`. New code must handle that.
+
+### Posture (non-negotiable)
+
+Read-only, advisory-only. **Only Valve GSI** is consumed — no memory reading, no input automation. The listener binds `127.0.0.1` only. The overlay is a browser page, not an injected overlay. Don't add features that violate this posture (see `BUILD_BLUEPRINT.md` §8 for the ToS discussion).
+
+## Testing conventions
+
+- Vitest across the whole tree. `packages/shared` and `apps/listener` are pure Node vitest; `apps/overlay` uses `jsdom` + `@testing-library/react` (setup in `src/test-setup.ts`).
+- Tests colocate with source: `foo.ts` ↔ `foo.test.ts`.
+- `packages/shared/src/__repro_verify__.test.ts` is a **debug harness**, not an assertion suite — it logs threat/item outputs for hand-picked enemy compositions so you can `pnpm --filter @dc/shared test __repro_verify__` and read the console. Don't turn it into real assertions; it's meant to be edited.

@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [v0-live-loop, main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests (vitest, all workspaces)
+        run: pnpm test
+
+      - name: Type-check & build
+        run: pnpm build
+
+      # Guard: the Electron main must keep bundling (Fastify + server + shared)
+      # into one file. Cheap — no Electron download.
+      - name: Verify desktop bundle
+        run: pnpm dlx esbuild@0.23.1 apps/desktop/src/main.ts --bundle --platform=node --format=cjs --target=node20 --external:electron --outfile=/tmp/desktop-main.cjs

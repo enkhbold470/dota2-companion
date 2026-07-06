@@ -1,4 +1,5 @@
 import type {
+  ItemCategory,
   ItemData,
   ItemDataMap,
   ItemEngineInput,
@@ -8,6 +9,28 @@ import type {
   ThreatReport,
 } from './coaching-types';
 import type { Role } from './types';
+
+// How each counter-item plays: aggressive (make a kill / keep hitting), defensive
+// (survive their combo), or utility (detection, dispels, saves). Anything unmapped
+// defaults to defensive, since the engine is threat-driven.
+const ITEM_CATEGORY: Record<string, ItemCategory> = {
+  black_king_bar: 'defensive',
+  pipe: 'defensive',
+  glimmer_cape: 'defensive',
+  sphere: 'defensive',
+  aeon_disk: 'defensive',
+  crimson_guard: 'defensive',
+  monkey_king_bar: 'aggressive',
+  spirit_vessel: 'aggressive',
+  maelstrom: 'aggressive',
+  cyclone: 'utility',
+  manta: 'utility',
+  lotus_orb: 'utility',
+  force_staff: 'utility',
+  dust: 'utility',
+  ward_sentry: 'utility',
+  gem: 'utility',
+};
 
 interface Rule {
   itemKey: string;
@@ -245,6 +268,7 @@ export function recommendItems(input: ItemEngineInput, items: ItemDataMap): Item
       affordable,
       score: rule.weight * distinctAbilityCount(matched),
       reasons,
+      category: ITEM_CATEGORY[rule.itemKey] ?? 'defensive',
     });
   }
   recommendations.sort((a, b) => b.score - a.score || a.cost - b.cost);
