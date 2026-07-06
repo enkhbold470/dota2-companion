@@ -32,6 +32,7 @@ jobs:
         run: pnpm build
 
       # Guard: the Electron main must keep bundling (Fastify + server + shared)
-      # into one file. Cheap — no Electron download.
+      # into one file. Cheap — no Electron download, no desktop npm install, so the
+      # runtime deps electron-builder installs at release time are marked external.
       - name: Verify desktop bundle
-        run: pnpm dlx esbuild@0.23.1 apps/desktop/src/main.ts --bundle --platform=node --format=cjs --target=node20 --external:electron --outfile=/tmp/desktop-main.cjs
+        run: pnpm dlx esbuild@0.23.1 apps/desktop/src/main.ts --bundle --platform=node --format=cjs --target=node20 --external:electron --external:electron-updater --outfile=/tmp/desktop-main.cjs
