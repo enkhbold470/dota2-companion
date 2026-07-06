@@ -35,16 +35,21 @@ export const t = {
   },
   // Damage-type accents (kept exact — asserted by SkillPanel tests).
   dmg: { Magical: '#a78bfa', Physical: '#f87171', Pure: '#fbbf24' } as Record<string, string>,
-  // NeuroFocus brand — minimalist, from the mental-game design (colors-brand).
-  // Near-black canvas, one purple focus line, one orange stress line, green/red
-  // kill/death markers, huge near-white numerals. Used by the Focus panel.
+  // NeuroFocus brand — exact tokens from the design system (tokens/colors.css,
+  // synced via /design-login). Near-black canvas, luminous purple focus hue,
+  // neon signal colors, huge white numerals. Used by the Focus panel + live strip.
   brand: {
-    focus: '#a855f7',   // focus line (purple)
-    stress: '#f59e0b',  // stress β line (orange)
-    kill: '#22c55e',    // kill marker (green)
-    death: '#ef4444',   // death marker (red)
-    ink: '#f5f5f7',     // hero numerals (near-white)
-    canvas: '#0a0a0f',  // near-black plot background
+    focus: '#BF5AF2',       // purple-500 — PRIMARY focus hue / glow
+    focusBright: '#D89CFF', // purple-200 — brightest glow core
+    focusDeep: '#8E5BFF',   // purple-700 — gradient partner
+    stress: '#FF9F0A',      // orange-500 — stress β / tilt warning
+    kill: '#30D158',        // green-500 — kill / positive
+    death: '#FF453A',       // red-500 — death / crash / destructive
+    ink: '#FFFFFF',         // d-text-1 — hero numerals
+    canvas: '#0A0813',      // bg-deep-2 — near-black plot background
+    glow: '0 0 12px rgba(191,90,242,0.90)',            // --glow-dot: live signal
+    glowLine: 'drop-shadow(0 0 6px rgba(191,90,242,0.70))', // --filter-glow-line
+    grad: 'linear-gradient(135deg, #C77DFF, #8E5BFF)', // --grad-purple
   },
   font: { xs: 10, sm: 11, base: 12, md: 13, lg: 16, xl: 20 },
   weight: { normal: 400, semibold: 600 },

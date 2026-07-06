@@ -113,8 +113,10 @@ export function SettingsPanel({ open, onClose, session }: SettingsPanelProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
           <SectionLabel tone="ai">NeuroFocus headset (EEG)</SectionLabel>
           <div style={{ fontSize: t.font.sm, color: t.color.textMuted, lineHeight: t.line.normal }}>
-            Records your brainwave signal during the match (starts with the game, stops when it ends).
-            Opt-in; neural data stays on this machine.
+            Streams live focus once connected. To capture the raw signal, hit{' '}
+            <strong>● Record</strong> in the focus strip at match start and <strong>Stop &amp; save</strong> when
+            it ends — Dota doesn’t reliably signal those moments, so recording is manual. Opt-in; neural
+            data stays on this machine.
           </div>
           <div style={{ display: 'flex', gap: t.space.sm, alignItems: 'center', flexWrap: 'wrap' }}>
             {session.mode === 'off'

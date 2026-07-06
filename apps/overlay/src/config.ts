@@ -8,6 +8,7 @@ export const ITEM_BUILD_URL = `${origin}/item-build`;
 export const VISION_URL = `${origin}/vision`;
 export const SETTINGS_URL = `${origin}/settings`;
 export const OPENAI_KEY_URL = `${origin}/settings/openai-key`;
+export const RECORDING_URL = `${origin}/recording`;
 
 export const WS_URL = (() => {
   const u = new URL(origin);

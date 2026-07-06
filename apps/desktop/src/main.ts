@@ -95,6 +95,9 @@ async function start(): Promise<void> {
 
   const server = buildServer({
     token, hub: new Hub(), openaiKey, staticDir,
+    // Default folder for saved EEG recordings (the user can override the path in
+    // Settings → Raw EEG data folder).
+    recordingsDir: join(dir, 'recordings'),
     // First-time setup writes the key here so it survives a restart.
     onSaveOpenAiKey: (key) => {
       try { writeFileSync(join(dir, 'openai-key.txt'), key, 'utf8'); } catch { /* non-fatal */ }

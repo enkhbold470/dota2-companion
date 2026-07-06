@@ -58,18 +58,21 @@ function Legend() {
 }
 
 export function FocusPanel({ session }: { session: FocusSession }) {
-  const { mode, status, deviceName, connect, disconnect, setMode, reading, timeline, events, recording } = session;
+  const { mode, status, deviceName, connect, disconnect, setMode, reading, live, timeline, events, recording } = session;
 
+  // Chart the deliberate recording once it exists; until then show the live rolling
+  // window so the panel is never blank while a headset streams.
+  const chart = timeline.length > 1 ? timeline : live;
   const crash = useMemo(() => findCrash(timeline, events), [timeline, events]);
   const tiltMax = 5;
 
   const header = (
     <div style={{ display: 'flex', alignItems: 'center', gap: t.space.sm }}>
-      <SectionLabel tone="ai">Focus</SectionLabel>
+      <SectionLabel tone="ai">Focus · session</SectionLabel>
       {recording && <span style={{ fontSize: t.font.xs, color: t.brand.death }}>● REC</span>}
       {deviceName && <span style={{ fontSize: t.font.xs, color: t.color.textFaint }}>{deviceName}</span>}
       {mode !== 'off' && (
-        <button type="button" onClick={() => void disconnect()} style={{ ...btn('ghost'), marginLeft: 'auto' }}>Stop</button>
+        <button type="button" onClick={() => void disconnect()} style={{ ...btn('ghost'), marginLeft: 'auto' }}>Disconnect</button>
       )}
     </div>
   );
@@ -122,7 +125,7 @@ export function FocusPanel({ session }: { session: FocusSession }) {
         <div style={{ fontSize: t.font.sm, color: t.brand.stress }}>Adjust the headset for better contact — signal is noisy.</div>
       )}
 
-      <FocusChart timeline={timeline} events={events} />
+      <FocusChart timeline={chart} events={events} />
       <Legend />
 
       {crash && (

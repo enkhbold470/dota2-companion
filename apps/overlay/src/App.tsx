@@ -18,6 +18,7 @@ import { AiItemPanel } from './components/AiItemPanel';
 import { SkillPanel } from './components/SkillPanel';
 import { AskCoachPanel } from './components/AskCoachPanel';
 import { FocusPanel } from './components/FocusPanel';
+import { LiveFocusStrip } from './components/LiveFocusStrip';
 import { SettingsPanel, SETUP_DONE_KEY } from './components/SettingsPanel';
 
 const HERO_OPTIONS: HeroOption[] = Object.entries(HERO_DATA)
@@ -118,6 +119,8 @@ export default function App() {
           style={{ background: 'transparent', border: 0, cursor: 'pointer', color: t.color.textMuted, fontSize: 18, lineHeight: 1, padding: 2 }}
         >⚙</button>
       </header>
+
+      <LiveFocusStrip session={focus} />
 
       <Panel>
         <TimerPanel

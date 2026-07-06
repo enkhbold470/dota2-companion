@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
 import fastifyStatic from '@fastify/static';
@@ -6,6 +7,7 @@ import { registerCoachRoute } from './coach-route';
 import { registerItemRoute } from './item-route';
 import { registerVisionRoute } from './vision-route';
 import { registerSettingsRoute } from './settings-route';
+import { registerRecordingRoute } from './recording-route';
 import type { Hub } from './hub';
 
 export interface ServerOptions {
@@ -15,13 +17,16 @@ export interface ServerOptions {
   coachAllowOrigin?: string;
   /** Persist a key set via /settings (e.g. the desktop app writes openai-key.txt). */
   onSaveOpenAiKey?: (key: string) => void;
+  /** Fallback folder for saved EEG recordings when the client hasn't set a path. */
+  recordingsDir?: string;
   /** When set, the built overlay is served from this dir so the app is one process. */
   staticDir?: string;
 }
 
 export function buildServer(opts: ServerOptions): FastifyInstance {
-  // 8 MB to accommodate pasted screenshots on POST /vision (GSI payloads are tiny).
-  const app = Fastify({ logger: false, bodyLimit: 8_000_000 });
+  // 64 MB: a long manual EEG recording POSTs raw ADS1220 counts as JSON (up to ~2 M
+  // samples). Screenshots on POST /vision are far smaller; GSI payloads are tiny.
+  const app = Fastify({ logger: false, bodyLimit: 64_000_000 });
   app.register(websocket);
 
   app.get('/health', async () => ({ ok: true }));
@@ -40,6 +45,10 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
       currentKey = key.trim() === '' ? null : key.trim();
       if (currentKey && opts.onSaveOpenAiKey) opts.onSaveOpenAiKey(currentKey);
     },
+    allowOrigin: opts.coachAllowOrigin,
+  });
+  registerRecordingRoute(app, {
+    defaultDir: opts.recordingsDir ?? join(process.cwd(), 'nf-recordings'),
     allowOrigin: opts.coachAllowOrigin,
   });
 
