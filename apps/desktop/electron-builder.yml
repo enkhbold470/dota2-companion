@@ -32,3 +32,17 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   shortcutName: Dota 2 Companion
+
+mac:
+  category: public.app-category.games
+  # Unsigned build (no Apple Developer cert). Gatekeeper will ask the user to
+  # right-click → Open the first time. arm64 = Apple Silicon (M-series).
+  identity: null
+  target:
+    - target: dmg
+      arch: arm64
+    - target: zip     # zip feeds electron-updater's macOS channel (latest-mac.yml)
+      arch: arm64
+
+dmg:
+  writeUpdateInfo: true

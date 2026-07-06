@@ -1,4 +1,4 @@
-name: Release (Windows installer)
+name: Release (installers)
 
 on:
   push:
@@ -6,10 +6,31 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  windows-installer:
-    runs-on: windows-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+            globs: |
+              apps/desktop/release/*.exe
+              apps/desktop/release/*.blockmap
+              apps/desktop/release/latest.yml
+          - os: macos-14        # Apple Silicon (arm64) runner
+            name: macos-arm64
+            globs: |
+              apps/desktop/release/*.dmg
+              apps/desktop/release/*.zip
+              apps/desktop/release/*.blockmap
+              apps/desktop/release/latest-mac.yml
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: write
+    env:
+      # Build unsigned — we have no Apple/Windows signing cert. Stops electron-builder
+      # from trying (and hanging on) auto-discovered identities.
+      CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
       - uses: actions/checkout@v4
 
@@ -35,26 +56,20 @@ jobs:
         run: npm install
         working-directory: apps/desktop
 
-      - name: Build Windows installer
+      - name: Build installer (host platform)
         run: npm run dist
         working-directory: apps/desktop
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dota2-companion-windows
-          path: |
-            apps/desktop/release/*.exe
-            apps/desktop/release/*.blockmap
-            apps/desktop/release/latest.yml
+          name: dota2-companion-${{ matrix.name }}
+          path: ${{ matrix.globs }}
 
-      # Attach the installer AND the auto-update metadata (latest.yml + blockmap) so
-      # electron-updater can detect and delta-download the next release.
-      - name: Attach installer + update feed to GitHub release
+      # Attach the installer AND the auto-update metadata so electron-updater can
+      # detect and delta-download the next release.
+      - name: Attach to GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            apps/desktop/release/*.exe
-            apps/desktop/release/*.blockmap
-            apps/desktop/release/latest.yml
+          files: ${{ matrix.globs }}

@@ -1,5 +1,7 @@
 import { app, BrowserWindow, shell, dialog } from 'electron';
-import electronUpdater from 'electron-updater';
+// electron-updater is CommonJS with NO default export — a default import resolves to
+// undefined. Use the named export (esbuild reads it off the require() result).
+import { autoUpdater } from 'electron-updater';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -89,7 +91,6 @@ function readOpenAiKey(dir: string): string | null {
 // or crash the app (offline, rate-limited, unsigned dev build all fail quiet).
 function setupAutoUpdate(win: BrowserWindow): void {
   if (!app.isPackaged) return; // dev has no release feed
-  const { autoUpdater } = electronUpdater;
   autoUpdater.autoDownload = false;          // ask before downloading
   autoUpdater.autoInstallOnAppQuit = true;   // if they defer, install on next quit
 
