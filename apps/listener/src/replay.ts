@@ -1,7 +1,9 @@
 import { readFile } from 'node:fs/promises';
+import { loadDotEnv } from './env';
 
+loadDotEnv();
 const token = process.env.GSI_TOKEN;
-if (!token) { console.error('GSI_TOKEN env var is required.'); process.exit(1); }
+if (!token) { console.error('GSI_TOKEN is required. Run `pnpm gen-cfg` first — it writes .env.'); process.exit(1); }
 
 const port = Number(process.env.PORT ?? 53000);
 const file = process.argv[2] ?? 'fixtures/sample-match.json';

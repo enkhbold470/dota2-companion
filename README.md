@@ -39,18 +39,12 @@ Then add `-gamestateintegration` to Dota 2's launch options
 (Steam → Library → right-click Dota 2 → Properties → Launch Options).
 **Without this launch option Dota never sends data and the overlay stays empty.**
 
-Run the companion:
+Run the companion (`gen-cfg` already wrote your token into `.env`, so no
+shell-specific env setup is needed — same commands on Windows/macOS/Linux):
 
 ```bash
-GSI_TOKEN=$(cat .gsi-token) pnpm listener   # terminal 1
-pnpm overlay                                # terminal 2 → http://127.0.0.1:5273
-```
-
-On Windows PowerShell, set the env var like this instead:
-
-```powershell
-$env:GSI_TOKEN = Get-Content .gsi-token; pnpm listener   # terminal 1
-pnpm overlay                                             # terminal 2
+pnpm listener   # terminal 1
+pnpm overlay    # terminal 2 → http://127.0.0.1:5273
 ```
 
 Launch Dota 2 and enter a match (a bot lobby works for testing) — the overlay
@@ -59,18 +53,23 @@ unlock counter-item advice, and set your role (core/support) at the top.
 
 ### Enable Ask Coach (optional, needs an OpenAI key)
 
-```bash
-OPENAI_API_KEY=sk-... GSI_TOKEN=$(cat .gsi-token) pnpm listener
+Open `.env` at the repo root and fill in the placeholder line:
+
+```
+OPENAI_API_KEY=sk-...
 ```
 
-Without a key everything else works; the Ask panel just shows a setup hint.
+Restart the listener; it prints `Ask Coach enabled (gpt-4o).` when the key is
+picked up. Without a key everything else works; the Ask panel just shows a
+setup hint. (This key is only for Ask Coach — it has nothing to do with
+Claude Code or other tools.)
 
 ## Develop without Dota (replay a recorded match)
 
 ```bash
-GSI_TOKEN=$(cat .gsi-token) pnpm listener   # terminal 1
-pnpm overlay                                # terminal 2
-GSI_TOKEN=$(cat .gsi-token) pnpm replay     # terminal 3
+pnpm listener   # terminal 1
+pnpm overlay    # terminal 2
+pnpm replay     # terminal 3
 ```
 
 ## Updating static data on patch day

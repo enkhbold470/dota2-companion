@@ -1,15 +1,21 @@
 import { buildServer } from './server';
 import { Hub } from './hub';
+import { loadDotEnv } from './env';
+
+const envPath = loadDotEnv();
+if (envPath) console.log(`Loaded ${envPath}`);
 
 const token = process.env.GSI_TOKEN;
 if (!token) {
-  console.error('GSI_TOKEN env var is required. Run `pnpm gen-cfg` first, then export it.');
+  console.error('GSI_TOKEN is required. Run `pnpm gen-cfg` first — it writes it into .env for you.');
   process.exit(1);
 }
 
 const openaiKey = process.env.OPENAI_API_KEY ?? null;
 if (!openaiKey) {
-  console.log('OPENAI_API_KEY not set — Ask Coach (POST /coach) is disabled.');
+  console.log('OPENAI_API_KEY not set (add it to .env) — Ask Coach (POST /coach) is disabled.');
+} else {
+  console.log('Ask Coach enabled (gpt-4o).');
 }
 
 const port = Number(process.env.PORT ?? 53000);
