@@ -14,7 +14,7 @@
  * multi-second windows. See the doc's "Reality banner".
  */
 
-import { bandPowers as dspBandPowers, mainsRatio, EEG_FS, type BandPowers } from './dsp';
+import { bandPowers as dspBandPowers, EEG_FS, type BandPowers } from './dsp';
 
 /**
  * Band powers over a window of raw ADS1220 counts. Delegates to the DSP pipeline
@@ -53,13 +53,14 @@ export function focusFeatures(bp: BandPowers): FocusFeatures {
  * ADS1220 rails near 0 or its 2^23 full-scale when an electrode is off; a
  * flat/near-constant window is also unusable. This gates every metric.
  *
- * Pass `fs`/`lineFreq` to also fold in the mains-band power ratio: a window
- * dominated by 50/60 Hz pickup is poor electrode contact even if it isn't
- * flat or railed. Called with a single arg it keeps the legacy behavior.
+ * NOTE: we deliberately do NOT gate on mains (50/60 Hz) power here. A dry
+ * single electrode indoors picks up mains far stronger than the µV-scale EEG
+ * (measured mains/EEG ratios of 5–10× are normal), so gating on it pins quality
+ * to "unusable" forever — the bug that froze focus at 50. The DSP already
+ * software-notches mains out before band powers, so mains presence is not a
+ * contact fault. `mainsRatio` remains available for diagnostics.
  */
-export function contactQuality(
-  samples: readonly number[], fs?: number, lineFreq = 60,
-): 0 | 1 | 2 | 3 {
+export function contactQuality(samples: readonly number[]): 0 | 1 | 2 | 3 {
   const N = samples.length;
   if (N < 16) return 0;
   let min = Infinity;
@@ -84,16 +85,7 @@ export function contactQuality(
 
   if (flat) return 0;
   if (clipping) return 1;
-  let q: 0 | 1 | 2 | 3 = (railedLow || railedHigh) ? 2 : 3;
-
-  // Mains contamination knocks a clean-looking window down a grade (needs fs to
-  // resolve the line frequency). >50% of in-band power at 50/60 Hz ⇒ unusable.
-  if (fs && fs > 0) {
-    const ratio = mainsRatio(samples, fs, lineFreq);
-    if (ratio > 0.5) q = 1;
-    else if (ratio > 0.3 && q === 3) q = 2;
-  }
-  return q;
+  return (railedLow || railedHigh) ? 2 : 3;
 }
 
 /** Rolling mean/SD over a bounded window — the per-session baseline. */
@@ -293,7 +285,7 @@ export interface MetricSample {
 export function deriveMetric(
   samples: readonly number[], t: number, fs: number = EEG_FS, lineFreq = 60,
 ): MetricSample {
-  const quality = contactQuality(samples, fs, lineFreq);
+  const quality = contactQuality(samples);
   if (quality <= 1) return { t, source: 'derived', quality };
   const f = focusFeatures(computeBandPowers(samples, fs, lineFreq));
   // focus ratio beta/(alpha+theta) is ~0..several; squash to 0..1.

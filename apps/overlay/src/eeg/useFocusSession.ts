@@ -316,7 +316,7 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
         // Do NOT measure the rate off arrival timing — BLE jitter would wobble the
         // frequency axis and silently corrupt every band. See @dc/shared EEG_FS.
         const win = buf.slice(-WINDOW);
-        quality = contactQuality(win, EEG_FS, LINE_FREQ);
+        quality = contactQuality(win);
         features = focusFeatures(computeBandPowers(win, EEG_FS, LINE_FREQ));
       }
 

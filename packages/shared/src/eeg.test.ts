@@ -51,6 +51,19 @@ describe('contactQuality', () => {
     const s = sine(10, 5000).map((v) => v - 4_000_000); // centered near 0 → rails low
     expect(contactQuality(s)).toBeLessThanOrEqual(2);
   });
+
+  it('stays usable when 60 Hz mains dominates (regression: froze focus at 50)', () => {
+    // Real dry-electrode capture: µV-scale EEG buried under strong mains pickup.
+    // The DSP notches mains out downstream, so this must NOT be gated to unusable.
+    const win: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const tt = i / RATE;
+      const eeg = 15 * Math.sin(2 * Math.PI * 10 * tt);
+      const mains = 80 * Math.sin(2 * Math.PI * 60 * tt); // 60 Hz >> EEG
+      win.push(Math.round(4_000_000 + (eeg + mains) * 2.54));
+    }
+    expect(contactQuality(win)).toBeGreaterThanOrEqual(2);
+  });
 });
 
 describe('RollingStat', () => {
