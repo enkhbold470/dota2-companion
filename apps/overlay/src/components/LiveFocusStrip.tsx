@@ -67,9 +67,9 @@ export function LiveFocusStrip({ session }: { session: FocusSession }) {
           {focus ?? '—'}
         </span>
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
-          <span style={{ fontSize: t.font.xs, textTransform: 'uppercase', letterSpacing: 0.5, color: t.color.textMuted }}>Focus</span>
+          <span style={{ fontSize: t.font.xs, textTransform: 'uppercase', letterSpacing: 0.5, color: t.color.textMuted }}>FlowState</span>
           <span style={{ fontSize: t.font.xs, color: tilt >= 3 ? t.brand.stress : t.color.textFaint }}>
-            {stateLabel}{tilt >= 3 ? ` · tilt ${tilt}` : ''}
+            {stateLabel}{tilt >= 3 ? ` · TiltGuard ${tilt}` : ''}
           </span>
         </div>
       </div>

@@ -92,7 +92,7 @@ export function AiItemPanel({
   return (
     <div style={{ fontSize: t.font.base }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: t.space.sm, marginBottom: t.space.sm }}>
-        <SectionLabel tone="ai">AI item build</SectionLabel>
+        <SectionLabel tone="ai">NeuroFocus Intelligence · item build</SectionLabel>
         <div style={{ display: 'inline-flex', gap: 3 }}>
           <button type="button" onClick={() => pickStyle('meta')} style={btn('toggle', { active: style === 'meta', tone: 'meta' })}>Meta</button>
           <button type="button" onClick={() => pickStyle('fun')} style={btn('toggle', { active: style === 'fun', tone: 'ai' })}>Fun 🎉</button>

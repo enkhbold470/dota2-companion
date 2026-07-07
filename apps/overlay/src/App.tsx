@@ -253,7 +253,7 @@ export default function App() {
       </Panel>
 
       <Panel>
-        <SectionLabel style={{ marginBottom: t.space.sm }}>Ask coach</SectionLabel>
+        <SectionLabel tone="ai" style={{ marginBottom: t.space.sm }}>NeuroFocus Intelligence · ask coach</SectionLabel>
         <AskCoachPanel getContext={getCoachContext} />
       </Panel>
       </>}

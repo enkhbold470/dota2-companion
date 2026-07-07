@@ -1,34 +1,59 @@
-# Dota 2 Companion (v0.2.0 — Live Coach)
+# NeuroFocus — Dota 2 NeuroSync
 
-Local, read-only Dota 2 coaching companion built to help you climb:
-Dota 2 → Game State Integration → local listener → web overlay, with
+**Sync your brain with your game.** An EEG-powered Dota 2 coaching companion:
+live game-state coaching while you play, and a full mental-game debrief when
+you're done — your **FlowState** (focus & stress from a NeuroFocus EEG headset)
+overlaid on every kill, death and fight, with an AI coach that tells you *where*
+and *why* you lost focus.
 
-- **AI item build** — hero-tuned, enemy-aware buy order from **gpt-4o**, with a
-  **Meta ⇄ Fun 🎉** toggle: *Meta* gives the optimal winning build, *Fun* leans
-  into spicy high-impact picks (Dagon, Ethereal Blade, Refresher, Daedalus…)
-  that are still castable on your hero. Priced against live gold with a
-  **BUY NOW** flag; auto-refreshes on draft/hero/role change. Falls back to a
-  deterministic rule-based counter-item engine when no key is set.
-- **Hero analyzer (vision)** — paste or upload a screenshot of the draft and
-  gpt-4o detects the **enemy** heroes (your own hero and allies filtered out),
-  so you don't have to type them in.
-- **Skill damage readout** — every skill's damage at its current level, what
-  the next point buys, a **LEVEL UP** hint for the next skill point, damage
-  type, cooldown and mana — live from GSI, with ability icons.
-- **Coach tips** — "what should I do right now": unspent-gold warnings, TP
-  discipline, CS benchmarks at 5:00/10:00, night-time warnings, ult-online
-  windows, detection reminders vs invisible heroes.
-- **Timers & economy** — rune/Roshan/day-night timers and a GPM grade.
-- **Ask Coach (optional)** — free-form questions ("why not BKB here?")
-  answered by OpenAI **gpt-4o** with your live game state as context.
+[![CI](https://github.com/enkhbold470/dota2-companion/actions/workflows/ci.yml/badge.svg)](https://github.com/enkhbold470/dota2-companion/actions/workflows/ci.yml)
 
-> **Posture:** read-only, advisory-only. Only Valve's official GSI is used —
-> no memory reading, no input automation.
+Dota 2 → Game State Integration → local listener → web overlay. Read-only,
+advisory-only, local-first.
+
+**Keywords:** Dota 2 coach · game state integration (GSI) · EEG neurofeedback ·
+BCI gaming · esports performance · focus tracking · tilt detection · OpenDota
+stats · AI item builds · gpt-5.4
+
+## What it does
+
+### While you play (Live)
+- **Auto draft detect** — one screen grab of the top hero bar and gpt-5.4
+  vision reads **all ten heroes**, splits Radiant/Dire, and maps allies vs
+  enemies using your GSI side. Cropped full-resolution capture + alias-aware
+  name matching + automatic retries. Falls back to a manual picker.
+- **NeuroFocus Intelligence · item build** — hero-tuned, enemy-aware buy order
+  with a **Meta ⇄ Fun 🎉** toggle. *Fun* draws from a curated per-hero spicy
+  pool (`hero-builds.json`, generated offline by an LLM and checked in — no more
+  Dagon-on-every-hero); *Meta* weighs the deterministic counter-item engine's
+  picks. Priced against live gold with a **BUY NOW** flag.
+- **NeuroFocus Intelligence · ask coach** — free-form questions answered with
+  your full live context: hero, economy, threat flags, engine advice, tips.
+- **FlowState strip** — live focus/stress score from the headset, with
+  **TiltGuard** warnings when you're spiraling.
+- **Skill damage readout, coach tips, rune/Roshan/day-night timers, GPM grade**
+  — a deterministic rules engine over pruned static data, no LLM in the tick path.
+
+### Between games (NeuroFocus Studio)
+- **Full-screen dashboard** appears automatically when you're not in a match.
+- **Last-match stat sheet** — win/loss, K/D/A, last hits/denies, GPM/XPM, hero
+  & tower damage, healing, net worth, final items — via OpenDota (cached locally).
+- **Recent-match history** — click any row to load its stat sheet.
+- **TraceLog session review** — recorded EEG sessions paired with a screen
+  recording; click the focus timeline to seek the video to the moment focus dropped.
+- **NeuroFocus Intelligence · deep analysis** — one click sends the session's
+  FlowState buckets + match events (+ the OpenDota gold curve) to the AI coach,
+  which returns the moments you lost focus, your tilt pattern, and **one
+  trainable habit** for next session. Each moment seeks the video.
+
+> **Posture:** read-only, advisory-only. Only Valve's official GSI is consumed —
+> no memory reading, no input automation. The listener binds `127.0.0.1`;
+> neural data and recordings never leave your machine.
 
 > **Lightweight by design:** the hot loop is a deterministic rules engine over
-> ~250 KB of pruned static data — no LLM, no heavy runtime. LLM calls (gpt-4o)
-> fire only on explicit/debounced user actions (item build, hero vision, Ask
-> Coach) — never per GSI tick — and are off unless you provide a key.
+> ~250 KB of pruned static data. LLM calls (gpt-5.4 via the OpenAI Responses
+> API) fire only on explicit/debounced user actions — never per GSI tick — and
+> are off unless you provide a key.
 
 ## Quick start (macOS or Windows)
 
@@ -49,9 +74,8 @@ pnpm start        # → open http://127.0.0.1:53000
 ```
 
 `pnpm start` reads `GSI_TOKEN` (and optional `OPENAI_API_KEY`) from `.env` — see
-`.env.example`. Launch Dota 2 and enter a match; the overlay updates live. Pick
-the enemy heroes (search, or paste a screenshot into the hero analyzer) to
-unlock counter-item advice and the AI item build.
+`.env.example`. Launch Dota 2 and enter a match; the overlay updates live and
+auto-detects both teams at draft (arm screen capture when prompted).
 
 > **`.env` loads with override.** `apps/listener/src/load-env.ts` runs first and
 > forces the project `.env` to win over any globally-exported `OPENAI_API_KEY`
@@ -64,12 +88,13 @@ A one-click desktop build lives in `apps/desktop` (Electron). It bundles the
 listener + overlay into a single window, generates the GSI token on first run,
 and auto-installs the `.cfg` into Dota if it can find your Steam folder.
 
-- **Get it:** download `Dota 2 Companion Setup *.exe` from the latest GitHub
-  release (built by `.github/workflows/release.yml` on a Windows runner), or
-  build locally on Windows: `pnpm install && pnpm --filter @dc/overlay build`,
-  then `cd apps/desktop && npm install && npm run dist` → `apps/desktop/release/`.
-- **AI features:** put your key in `openai-key.txt` inside the app's user-data
-  folder (the first-run dialog shows the path), or set `OPENAI_API_KEY`.
+- **Get it:** download the setup `.exe` from the latest GitHub release (built by
+  `.github/workflows/release.yml` on a Windows runner), or build locally on
+  Windows: `pnpm install && pnpm --filter @dc/overlay build`, then
+  `cd apps/desktop && npm install && npm run dist` → `apps/desktop/release/`.
+- **AI features:** paste your key in Settings (⚙, stored listener-side and
+  hot-swapped), put it in `openai-key.txt` inside the app's user-data folder,
+  or set `OPENAI_API_KEY`.
 
 The desktop app is intentionally isolated from the pnpm workspace (see
 `pnpm-workspace.yaml`'s `!apps/desktop`) — Electron/electron-builder are
@@ -83,14 +108,6 @@ GSI_TOKEN=$(cat .gsi-token) pnpm listener   # terminal 1 (API/WS on :53000)
 pnpm overlay                                # terminal 2 → http://127.0.0.1:5273
 ```
 
-### Enable Ask Coach (optional, needs an OpenAI key)
-
-```bash
-OPENAI_API_KEY=sk-... GSI_TOKEN=$(cat .gsi-token) pnpm listener
-```
-
-Without a key everything else works; the Ask panel just shows a setup hint.
-
 ## Develop without Dota (replay a recorded match)
 
 ```bash
@@ -102,25 +119,32 @@ GSI_TOKEN=$(cat .gsi-token) pnpm replay     # terminal 3
 ## Updating static data on patch day
 
 ```bash
-pnpm up dotaconstants && pnpm gen-data
+pnpm up dotaconstants && pnpm gen-data   # prune dotaconstants → checked-in JSON
+pnpm gen-hero-builds                     # regenerate the per-hero fun pools (needs OPENAI_API_KEY)
 ```
 
-`scripts/gen-coach-data.mjs` prunes dotaconstants (~2.5 MB) down to the
-~250 KB the engines actually need (damage type, BKB pierce, dispellability,
-per-level damage/cooldown/mana, item costs). The output is checked in.
+`scripts/gen-coach-data.mjs` prunes dotaconstants (~2.5 MB) down to the ~250 KB
+the engines actually need (damage type, BKB pierce, dispellability, per-level
+damage/cooldown/mana, item costs, OpenDota item-id map).
+`scripts/gen-hero-builds.mjs` asks gpt-5.4 for a fun-but-castable item pool per
+hero, validates every name against the item data, and writes
+`hero-builds.json`. Both outputs are checked in; Settings shows which game
+patch the data was built from and flags when the live patch is newer.
 
 ## Layout
 
 - `packages/shared` — pure logic (GSI normalize, timers, economy, threat
   classification, counter-item engine, skill readout, coach tips, hero/item
-  name matching, Dota-art asset URLs). Fully unit-tested; static data injected
-  as arguments.
+  name matching, EEG DSP + FlowState scoring, session format, deep-analysis
+  context builder, Dota-art asset URLs). Fully unit-tested; static data
+  injected as arguments.
 - `apps/listener` — Fastify GSI receiver + WebSocket broadcaster, plus the
-  optional gpt-4o routes: `/coach` (Ask Coach + quick read), `/item-build`
-  (JSON-mode Meta/Fun item builds), `/vision` (screenshot → enemy heroes). In
-  prod it also serves the built overlay via `@fastify/static` (single process).
-- `apps/overlay` — React/Vite overlay UI (a browser page, not an injected
-  overlay), with Dota CDN art for heroes/items/abilities.
+  optional gpt-5.4 routes (`/coach`, `/item-build`, `/vision`, `/analysis`),
+  the `/opendota` caching proxy, and local recording persistence. In prod it
+  also serves the built overlay via `@fastify/static` (single process).
+- `apps/overlay` — React/Vite UI (a browser page, not an injected overlay):
+  the live coaching column + the NeuroFocus Studio dashboard, with Dota CDN
+  art for heroes/items/abilities.
 - `apps/desktop` — Electron wrapper that produces the one-click Windows
   installer (NSIS via electron-builder).
 

@@ -8,6 +8,8 @@ export interface SettingsRouteOptions {
     version?: string | null;
     /** Auto-updater state, e.g. { state: 'downloading', info: '42%' }. */
     updater?: { state: string; info: string | null } | null;
+    /** Provenance of the static coaching data — game patch + dotaconstants version. */
+    data?: { gamePatch: string; dataVersion: string } | null;
   };
   /** Persist + hot-swap a new OpenAI key. Empty string clears it. */
   setOpenAiKey: (key: string) => void;

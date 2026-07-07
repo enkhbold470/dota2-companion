@@ -1,5 +1,6 @@
 {
   "name": "dota2-companion",
+  "description": "NeuroFocus — Dota 2 NeuroSync: EEG-powered focus coaching + AI game companion (GSI overlay, gpt-5.4 coach, OpenDota stats)",
   "private": true,
   "version": "0.0.0",
   "type": "module",

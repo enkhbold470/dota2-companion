@@ -22,10 +22,10 @@ export function FocusPanel({ session }: { session: FocusSession }) {
   if (mode === 'off') {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.md }}>
-        <SectionLabel tone="ai">Focus · mental game</SectionLabel>
+        <SectionLabel tone="ai">FlowState · mental game</SectionLabel>
         <div style={{ fontSize: t.font.base, color: t.color.textMuted, lineHeight: t.line.normal }}>
-          Track focus &amp; stress from your NeuroFocus headset, overlaid on your kills, deaths,
-          respawns and fights. A coarse, per-session proxy — not mind-reading.
+          Sync your FlowState — focus &amp; stress from your NeuroFocus headset — with your kills,
+          deaths, respawns and fights. A coarse, per-session proxy — not mind-reading.
         </div>
         <div style={{ display: 'flex', gap: t.space.sm, flexWrap: 'wrap' }}>
           <button type="button" onClick={() => void connect()} style={btn('primary')}>Connect headset</button>
@@ -42,7 +42,7 @@ export function FocusPanel({ session }: { session: FocusSession }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.md }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: t.space.sm }}>
-        <SectionLabel tone="ai">Focus · session</SectionLabel>
+        <SectionLabel tone="ai">FlowState · session</SectionLabel>
         {recording && <span style={{ fontSize: t.font.xs, color: t.brand.death }}>● REC</span>}
         {deviceName && <span style={{ fontSize: t.font.xs, color: t.color.textFaint }}>{deviceName}</span>}
         {mode !== 'off' && (
@@ -68,10 +68,10 @@ export function FocusPanel({ session }: { session: FocusSession }) {
           {focusScore ?? '—'}
         </span>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: t.font.sm, textTransform: 'uppercase', letterSpacing: 0.6, color: t.color.textMuted }}>Focus</span>
+          <span style={{ fontSize: t.font.sm, textTransform: 'uppercase', letterSpacing: 0.6, color: t.color.textMuted }}>FlowState</span>
           {reading && reading.state !== 'UNKNOWN' && reading.state !== 'CALIBRATING' && (
             <span style={{ fontSize: t.font.base, color: reading.tilt >= 3 ? t.brand.stress : t.color.textMuted }}>
-              tilt {reading.tilt} / {tiltMax}
+              TiltGuard {reading.tilt} / {tiltMax}
             </span>
           )}
           {stateLabel && <span style={{ fontSize: t.font.sm, color: t.color.textFaint }}>{stateLabel}</span>}

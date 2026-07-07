@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import websocket from '@fastify/websocket';
 import fastifyStatic from '@fastify/static';
-import { isAuthorized, normalizeGsi, type GsiPayload } from '@dc/shared';
+import { isAuthorized, normalizeGsi, DATA_META, type GsiPayload } from '@dc/shared';
 import { registerCoachRoute } from './coach-route';
 import { registerItemRoute } from './item-route';
 import { registerVisionRoute } from './vision-route';
@@ -53,6 +53,7 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
       openaiKeySet: !!currentKey,
       version: opts.version ?? null,
       updater: opts.updaterStatus?.() ?? null,
+      data: { gamePatch: DATA_META.gamePatch, dataVersion: DATA_META.version },
     }),
     checkUpdates: opts.checkUpdates,
     setOpenAiKey: (key) => {

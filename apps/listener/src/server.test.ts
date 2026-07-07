@@ -37,6 +37,16 @@ describe('listener server', () => {
     await app.close();
   });
 
+  it('reports the coaching-data game patch in /settings', async () => {
+    const app = buildServer({ token: 'secret', hub: new Hub() });
+    const res = await app.inject({ method: 'GET', url: '/settings' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { data?: { gamePatch?: string; dataVersion?: string } };
+    expect(body.data?.gamePatch).toMatch(/^\d+\.\d+/);
+    expect(body.data?.dataVersion).toBeTruthy();
+    await app.close();
+  });
+
   it('returns 400 for non-object body', async () => {
     const app = buildServer({ token: 'secret', hub: new Hub() });
     const res = await app.inject({

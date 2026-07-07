@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { t, btn, inputStyle, SectionLabel } from '../theme';
-import { SETTINGS_URL, OPENAI_KEY_URL } from '../config';
+import { SETTINGS_URL, OPENAI_KEY_URL, OPENDOTA_PATCH_URL } from '../config';
 import type { FocusSession } from '../eeg/useFocusSession';
 
 const RAW_PATH_KEY = 'nf.rawPath';
@@ -12,6 +12,7 @@ interface SettingsStatus {
   openaiKeySet?: boolean;
   version?: string | null;
   updater?: { state: string; info: string | null } | null;
+  data?: { gamePatch: string; dataVersion: string } | null;
 }
 
 function updaterLabel(u: { state: string; info: string | null } | null | undefined): string {
@@ -50,6 +51,7 @@ export function SettingsPanel({ open, onClose, session }: SettingsPanelProps) {
   const [save, setSave] = useState<Save>('idle');
   const [rawPath, setRawPath] = useState(getRawDataPath());
   const [about, setAbout] = useState<SettingsStatus | null>(null);
+  const [livePatch, setLivePatch] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -58,6 +60,15 @@ export function SettingsPanel({ open, onClose, session }: SettingsPanelProps) {
       .then((r) => (r.ok ? (r.json() as Promise<SettingsStatus>) : null))
       .then((d) => { setKeySet(d?.openaiKeySet ?? false); setAbout(d); })
       .catch(() => setKeySet(null));
+    // Latest live game patch via the OpenDota proxy (cached listener-side for
+    // 24 h) — lets us flag when the bundled coaching data lags the game.
+    fetch(OPENDOTA_PATCH_URL)
+      .then((r) => (r.ok ? (r.json() as Promise<{ name?: string }[]>) : null))
+      .then((patches) => {
+        const latest = patches?.[patches.length - 1]?.name;
+        if (typeof latest === 'string') setLivePatch(latest);
+      })
+      .catch(() => undefined);
   }, [open]);
 
   // Kick a manual update check, then poll so progress/errors show inline.
@@ -202,9 +213,22 @@ export function SettingsPanel({ open, onClose, session }: SettingsPanelProps) {
 
         {/* --- About / updates --- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm, borderTop: `1px solid ${t.color.border}`, paddingTop: t.space.md }}>
+          {about?.data && (
+            <div style={{ fontSize: t.font.sm, color: t.color.textMuted }}>
+              NeuroFocus Intelligence — powered by game patch <strong style={{ color: t.color.accentText }}>{about.data.gamePatch}</strong>
+              {livePatch !== null && livePatch !== about.data.gamePatch && (
+                <span style={{ color: t.brand.stress }}>
+                  {' '}· live patch is {livePatch} — data may lag (run <code>pnpm up dotaconstants &amp;&amp; pnpm gen-data</code> when upstream catches up)
+                </span>
+              )}
+              {livePatch !== null && livePatch === about.data.gamePatch && (
+                <span style={{ color: t.color.success }}> · up to date with the live game ✓</span>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: t.space.sm, flexWrap: 'wrap' }}>
             <span style={{ fontSize: t.font.sm, color: t.color.textMuted }}>
-              Dota 2 Companion{about?.version ? ` v${about.version}` : ' (dev)'}
+              NeuroFocus — Dota 2 NeuroSync{about?.version ? ` v${about.version}` : ' (dev)'}
             </span>
             {about?.version != null && (
               <button type="button" onClick={() => void checkUpdates()} style={btn('ghost')}>
