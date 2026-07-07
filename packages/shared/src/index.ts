@@ -19,3 +19,4 @@ export * from './dsp';
 export * from './eeg';
 export * from './events';
 export * from './session';
+export * from './analysis';

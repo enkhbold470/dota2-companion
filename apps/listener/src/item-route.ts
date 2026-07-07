@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { HERO_BUILDS } from '@dc/shared';
 import { callOpenAi } from './openai';
 
 export interface ItemRouteOptions {
@@ -19,6 +20,28 @@ const SYSTEM_PROMPT =
   'If the context has hasScepter=true the player already has the Aghanim\'s Scepter upgrade — never recommend it (or "Aghanim\'s Blessing"). If hasShard=true, never recommend Aghanim\'s Shard. ' +
   'Recommend only buyable shop items — use "Aghanim\'s Scepter", never the Roshan-only "Aghanim\'s Blessing". ' +
   'Weight the immediate pickup toward the gold available. Use exact item names, e.g. "Black King Bar", "Aether Lens", "Boots of Travel".';
+
+const META_STYLE_LINE =
+  'BUILD STYLE = META: the optimal, highest-impact build for winning. ' +
+  'The context may include engineRecs (a deterministic counter-item engine\'s picks with reasons) — agree with them or override with better reasons, don\'t ignore them.';
+
+// Generic fallback only when the hero id is unknown; with a known hero the
+// curated per-hero pool (hero-builds.json) drives the fun style instead.
+const GENERIC_FUN_LINE =
+  'BUILD STYLE = FUN: lean into high-impact, high-damage, spicy picks that are still castable on this hero — big magic burst, big physical/crit, greedy tempo. ' +
+  'Choose fun and aggressive over safe/defensive, but keep every item usable on the hero (caster vs carry, right attack type). Punchy reasons.';
+
+/** Fun style: anchor the model on this hero's curated pool, adapted to the live game. */
+function funStyleLine(context: unknown): string {
+  const heroId = (context as { hero?: { id?: unknown } } | null | undefined)?.hero?.id;
+  const pool = typeof heroId === 'number' ? HERO_BUILDS[String(heroId)]?.fun : undefined;
+  if (!pool || pool.length === 0) return GENERIC_FUN_LINE;
+  const poolText = pool.map((p) => `${p.name} (${p.why})`).join('; ');
+  return (
+    'BUILD STYLE = FUN. Curated fun pool for THIS hero — draw mostly from it, picking what fits the enemies, gold and game time; ' +
+    `you may swap in something spicier when the lineup begs for it: ${poolText}. Punchy reasons.`
+  );
+}
 
 interface ItemSuggestion {
   name: string;
@@ -78,9 +101,7 @@ export function registerItemRoute(app: FastifyInstance, opts: ItemRouteOptions):
       return reply.code(501).send({ error: 'no-key' });
     }
     const style = body.style === 'fun' ? 'fun' : 'meta';
-    const styleLine = style === 'fun'
-      ? 'BUILD STYLE = FUN: lean into high-impact, high-damage, spicy picks that are still castable on this hero — big magic burst (Dagon, Ethereal Blade, Shiva\'s Guard, Veil of Discord), big physical/crit (Daedalus, Radiance, Bloodthorn, Monkey King Bar), and greedy tempo (Refresher Orb, Octarine Core). Choose fun and aggressive over safe/defensive, but keep every item usable on the hero (caster vs carry, right attack type). Punchy reasons.'
-      : 'BUILD STYLE = META: the optimal, highest-impact build for winning.';
+    const styleLine = style === 'fun' ? funStyleLine(body.context) : META_STYLE_LINE;
 
     const result = await callOpenAi({
       apiKey,

@@ -92,6 +92,10 @@ export interface NormalizedState {
   phase: GamePhase;
   /** Our side, from player.team_name — which drafted team is "us". */
   team: Team | null;
+  /** Raw 64-bit Steam id string from GSI (null pre-connect / spectating oddities). */
+  steamId: string | null;
+  /** 32-bit account id (low 32 bits of steamId) — the OpenDota /players key. */
+  accountId: string | null;
   paused: boolean;
   clock: number | null;
   isDay: boolean | null;
@@ -111,6 +115,7 @@ export interface NormalizedState {
     gpm: number | null;
     xpm: number | null;
     lastHits: number | null;
+    denies: number | null;
   };
   combat: {                  // used by the biometric layer to mark kill/death events
     kills: number | null;

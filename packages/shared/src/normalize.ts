@@ -38,6 +38,19 @@ function normalizeTeam(name: string | undefined): Team | null {
   return t === 'radiant' || t === 'dire' ? t : null;
 }
 
+/**
+ * 64-bit Steam id → 32-bit account id (the OpenDota /players key). BigInt, not
+ * Number: steam ids exceed 2^53 and lose precision as floats.
+ */
+export function steamIdToAccountId(steamId: string | undefined): string | null {
+  if (!steamId || !/^\d+$/.test(steamId)) return null;
+  try {
+    return (BigInt(steamId) & 0xffffffffn).toString();
+  } catch {
+    return null;
+  }
+}
+
 // Cosmetic / talent pseudo-abilities that GSI reports alongside real skills.
 const NON_SKILL_ABILITY = /^(special_bonus|plus_|seasonal_|abyssal_underlord_portal_warp$)/;
 
@@ -75,6 +88,8 @@ export function normalizeGsi(payload: GsiPayload): NormalizedState {
     gameState: map.game_state ?? null,
     phase: gamePhase(map.game_state),
     team: normalizeTeam(player.team_name),
+    steamId: player.steamid ?? null,
+    accountId: steamIdToAccountId(player.steamid),
     paused: map.paused === true,
     clock: numOrNull(map.clock_time),
     isDay: typeof map.daytime === 'boolean' ? map.daytime : null,
@@ -94,6 +109,7 @@ export function normalizeGsi(payload: GsiPayload): NormalizedState {
       gpm: numOrNull(player.gpm),
       xpm: numOrNull(player.xpm),
       lastHits: numOrNull(player.last_hits),
+      denies: numOrNull(player.denies),
     },
     combat: {
       kills: numOrNull(player.kills),

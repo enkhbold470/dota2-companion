@@ -14,6 +14,10 @@ export const VIDEO_CHUNK_URL = `${origin}/video/chunk`;
 export const VIDEO_FINISH_URL = `${origin}/video/finish`;
 export const RECORDINGS_URL = `${origin}/recordings`;
 export const RECORDING_FILE_URL = `${origin}/recordings/file`;
+export const OPENDOTA_MATCH_URL = `${origin}/opendota/match`;      // + /{matchId}
+export const OPENDOTA_RECENT_URL = `${origin}/opendota/players`;   // + /{accountId}/recent
+export const OPENDOTA_PATCH_URL = `${origin}/opendota/patch`;
+export const ANALYSIS_URL = `${origin}/analysis`;
 
 export const WS_URL = (() => {
   const u = new URL(origin);

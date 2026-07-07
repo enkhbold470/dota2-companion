@@ -20,6 +20,7 @@ const abilities = dc.abilities;
 const heroAbilities = dc.hero_abilities;
 const heroes = dc.heroes;
 const items = dc.items;
+const itemIds = dc.item_ids;
 const dcVersion = JSON.parse(
   readFileSync(path.join(path.dirname(require.resolve('dotaconstants')), 'package.json'), 'utf8'),
 ).version;
@@ -129,5 +130,7 @@ const write = async (name, data) => {
 await write('hero-data.json', heroesOut);
 await write('ability-data.json', abilitiesOut);
 await write('item-data.json', itemsOut);
+// Numeric item id → item key, for decoding OpenDota match payloads (item_0..item_5).
+await write('item-ids.json', itemIds ?? {});
 await write('data-meta.json', { source: 'dotaconstants', version: dcVersion, gamePatch });
 console.log(`Pruned from dotaconstants@${dcVersion} (game patch ${gamePatch}).`);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeGsi, gamePhase } from './normalize';
+import { normalizeGsi, gamePhase, steamIdToAccountId } from './normalize';
 import type { GsiPayload } from './types';
 
 const full: GsiPayload = {
@@ -7,7 +7,7 @@ const full: GsiPayload = {
     matchid: '123', clock_time: 600, daytime: true, paused: false,
     game_state: 'DOTA_GAMERULES_STATE_GAME_IN_PROGRESS',
   },
-  player: { gold: 1500, net_worth: 5200, gpm: 540, xpm: 610, last_hits: 88 },
+  player: { gold: 1500, net_worth: 5200, gpm: 540, xpm: 610, last_hits: 88, denies: 12, steamid: '76561198012345678' },
   hero: { id: 26, level: 12, alive: true, respawn_seconds: 0, has_aghanims_shard: true },
   items: {
     slot0: { name: 'item_blink' },
@@ -37,6 +37,17 @@ describe('normalizeGsi', () => {
     expect(s.hero.hasScepter).toBe(false);
     expect(s.economy.gpm).toBe(540);
     expect(s.economy.netWorth).toBe(5200);
+    expect(s.economy.denies).toBe(12);
+    expect(s.steamId).toBe('76561198012345678');
+    // 76561198012345678 - 76561197960265728 = 52079950
+    expect(s.accountId).toBe('52079950');
+  });
+
+  it('steamIdToAccountId converts without float precision loss and rejects junk', () => {
+    expect(steamIdToAccountId('76561198012345678')).toBe('52079950');
+    expect(steamIdToAccountId(undefined)).toBeNull();
+    expect(steamIdToAccountId('')).toBeNull();
+    expect(steamIdToAccountId('not-a-number')).toBeNull();
   });
 
   it('surfaces game_state, derived phase, and team', () => {

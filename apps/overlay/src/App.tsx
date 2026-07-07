@@ -7,7 +7,7 @@ import {
 import { useGsiSocket } from './useGsiSocket';
 import { useFocusSession } from './eeg/useFocusSession';
 import { useAutoDraft } from './eeg/useAutoDraft';
-import { t, Panel, SectionLabel } from './theme';
+import { t, Panel, SectionLabel, btn } from './theme';
 import { Logo } from './components/Logo';
 import { ConnectionBadge } from './components/ConnectionBadge';
 import { TimerPanel } from './components/TimerPanel';
@@ -23,6 +23,8 @@ import { FocusPanel } from './components/FocusPanel';
 import { ReviewPanel } from './components/ReviewPanel';
 import { LiveFocusStrip } from './components/LiveFocusStrip';
 import { SettingsPanel, SETUP_DONE_KEY } from './components/SettingsPanel';
+import { StudioDashboard } from './components/studio/StudioDashboard';
+import { resolveMode, LAST_MATCH_KEY, type ModeOverride } from './studioMode';
 
 const HERO_OPTIONS: HeroOption[] = Object.entries(HERO_DATA)
   .map(([id, h]) => ({ id: Number(id), localized_name: h.localizedName, name: h.name }))
@@ -34,7 +36,23 @@ export default function App() {
   const [enemies, setEnemies] = useState<number[]>([]);
   const [roshKilledAt, setRoshKilledAt] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [modeOverride, setModeOverride] = useState<ModeOverride>('auto');
   const focus = useFocusSession(state);
+
+  // Live coaching column during a game; NeuroFocus Studio between games.
+  const mode = resolveMode(state?.phase ?? null, modeOverride);
+
+  // Remember the last live match so Studio can show it after Dota closes.
+  const matchIdForMemory = state?.matchId ?? null;
+  const accountIdForMemory = state?.accountId ?? null;
+  useEffect(() => {
+    if (!matchIdForMemory || !accountIdForMemory) return;
+    try {
+      localStorage.setItem(LAST_MATCH_KEY, JSON.stringify({
+        matchId: matchIdForMemory, accountId: accountIdForMemory, seenAtMs: Date.now(),
+      }));
+    } catch { /* ignore */ }
+  }, [matchIdForMemory, accountIdForMemory]);
 
   // Enemies the user hand-picked (picker/paste) must never be auto-overwritten
   // for the current match. Reset when the match id changes.
@@ -90,10 +108,15 @@ export default function App() {
     setEnemies((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 5 ? [...prev, id] : prev);
   };
 
+  // Compact threat summary shared by both LLM contexts: what each enemy brings.
+  const threatFlags = () =>
+    threat.flags.map((f) => `${f.heroName}: ${f.abilityName} (${f.kind})`);
+
   // Auto-refresh the AI build only when the draft/hero/role changes, not per gold tick.
   const itemSignature = `${heroId ?? 'none'}|${role}|${[...enemies].sort((a, b) => a - b).join(',')}`;
   const getItemContext = () => ({
     hero: {
+      id: heroId,
       name: heroById(heroId)?.localizedName ?? null,
       attackType: heroById(heroId)?.attackType ?? null,
       level: state?.hero.level ?? null,
@@ -106,38 +129,63 @@ export default function App() {
     clock,
     items: state?.items ?? [],
     enemies: threat.enemies.map((e) => e.heroName),
+    threatFlags: threatFlags(),
+    engineRecs: recs.slice(0, 5).map((r) => ({ item: r.itemName, reasons: r.reasons })),
   });
 
+  // High-value fields first: the listener caps the serialized context, so the
+  // tail (tips) is what gets cut if the report runs long.
   const getCoachContext = () => ({
-    role,
-    clock,
     hero: state ? { ...state.hero, name: heroById(heroId)?.localizedName ?? null } : null,
+    role,
+    team: state?.team ?? null,
+    phase: state?.phase ?? null,
+    clock,
+    enemies: threat.enemies.map((e) => e.heroName),
+    allies: allies.map((id) => heroById(id)?.localizedName ?? String(id)),
     economy: state?.economy ?? null,
     items: state?.items ?? [],
-    enemies: threat.enemies.map((e) => e.heroName),
+    threatFlags: threatFlags(),
     itemAdvice: recs.slice(0, 3).map((r) => ({ item: r.itemName, cost: r.cost, reasons: r.reasons })),
     tips: tips.map((t) => t.message),
   });
 
+  const modeButton = (target: 'live' | 'studio', label: string) => (
+    <button
+      type="button"
+      onClick={() => setModeOverride(mode === target ? 'auto' : target)}
+      style={btn('toggle', { active: mode === target })}
+    >
+      {label}
+    </button>
+  );
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: t.space.md,
-      padding: t.space.lg, color: t.color.text, maxWidth: 460, margin: '0 auto',
+      padding: t.space.lg, color: t.color.text,
+      maxWidth: mode === 'studio' ? 1100 : 460, margin: '0 auto',
     }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: t.space.md }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: t.space.md, flexWrap: 'wrap' }}>
         <Logo size={30} />
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-          <span style={{ fontSize: t.font.md, fontWeight: t.weight.semibold, letterSpacing: 0.2 }}>Dota Coach</span>
+          <span style={{ fontSize: t.font.md, fontWeight: t.weight.semibold, letterSpacing: 0.2 }}>NeuroFocus · Dota 2 NeuroSync</span>
           <ConnectionBadge connected={connected} />
         </div>
-        <label style={{ fontSize: t.font.base, color: t.color.textMuted, marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: t.space.sm }}>
-          Role
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            <option value="core">core</option>
-            <option value="support">support</option>
-            <option value="unknown">unknown</option>
-          </select>
-        </label>
+        <div style={{ display: 'inline-flex', gap: 3, marginLeft: 'auto' }}>
+          {modeButton('live', 'Live')}
+          {modeButton('studio', 'Studio')}
+        </div>
+        {mode === 'live' && (
+          <label style={{ fontSize: t.font.base, color: t.color.textMuted, display: 'inline-flex', alignItems: 'center', gap: t.space.sm }}>
+            Role
+            <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
+              <option value="core">core</option>
+              <option value="support">support</option>
+              <option value="unknown">unknown</option>
+            </select>
+          </label>
+        )}
         <button
           type="button" title="Setup & settings" aria-label="Settings"
           onClick={() => setSettingsOpen(true)}
@@ -145,6 +193,9 @@ export default function App() {
         >⚙</button>
       </header>
 
+      {mode === 'studio' && <StudioDashboard state={state} focus={focus} />}
+
+      {mode === 'live' && <>
       <LiveFocusStrip session={focus} />
 
       <Panel>
@@ -205,6 +256,7 @@ export default function App() {
         <SectionLabel style={{ marginBottom: t.space.sm }}>Ask coach</SectionLabel>
         <AskCoachPanel getContext={getCoachContext} />
       </Panel>
+      </>}
 
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} session={focus} />
     </div>

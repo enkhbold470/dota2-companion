@@ -9,6 +9,8 @@ import { registerVisionRoute } from './vision-route';
 import { registerSettingsRoute } from './settings-route';
 import { registerRecordingRoute } from './recording-route';
 import { registerVideoRoute } from './video-route';
+import { registerOpenDotaRoute } from './opendota-route';
+import { registerAnalysisRoute } from './analysis-route';
 import type { Hub } from './hub';
 
 export interface ServerOptions {
@@ -45,6 +47,7 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
   registerCoachRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
   registerItemRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
   registerVisionRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
+  registerAnalysisRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
   registerSettingsRoute(app, {
     getStatus: () => ({
       openaiKeySet: !!currentKey,
@@ -61,6 +64,7 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
   const recordingsDir = opts.recordingsDir ?? join(process.cwd(), 'nf-recordings');
   registerRecordingRoute(app, { defaultDir: recordingsDir, allowOrigin: opts.coachAllowOrigin });
   registerVideoRoute(app, { defaultDir: recordingsDir, allowOrigin: opts.coachAllowOrigin });
+  registerOpenDotaRoute(app, { cacheDir: recordingsDir, allowOrigin: opts.coachAllowOrigin });
 
   app.post('/', async (req, reply) => {
     const raw = req.body;

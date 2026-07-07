@@ -7,6 +7,7 @@ import { RECORDINGS_URL, RECORDING_FILE_URL } from '../config';
 import { getRawDataPath } from './SettingsPanel';
 import { t, btn, SectionLabel } from '../theme';
 import { FocusTimeline } from './FocusTimeline';
+import { DeepAnalysisPanel } from './DeepAnalysisPanel';
 
 interface SessionEntry { name: string; size: number; mtimeMs: number; head: SessionHead | null }
 interface VideoEntry { name: string; size: number }
@@ -111,7 +112,7 @@ export function ReviewPanel({ refreshKey }: { refreshKey?: unknown }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.md }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: t.space.sm }}>
-        <SectionLabel tone="ai">Session review</SectionLabel>
+        <SectionLabel tone="ai">TraceLog · session review</SectionLabel>
         <button type="button" onClick={refresh} style={{ ...btn('ghost'), marginLeft: 'auto' }}>Refresh</button>
       </div>
 
@@ -198,6 +199,14 @@ export function ReviewPanel({ refreshKey }: { refreshKey?: unknown }) {
               <strong style={{ color: t.brand.focus }}>{crash.from} → {crash.to}</strong>.
               {videoAvailable && ' Click it above to watch that moment.'}
             </div>
+          )}
+
+          {selected && (
+            <DeepAnalysisPanel
+              session={session}
+              sessionName={selected}
+              onSeek={videoAvailable ? seek : undefined}
+            />
           )}
         </>
       )}

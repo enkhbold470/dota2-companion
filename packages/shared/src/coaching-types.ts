@@ -32,6 +32,14 @@ export type AbilityDataMap = Record<string, AbilityData>;
 export type HeroDataMap = Record<string, HeroData>; // keyed by numeric hero id as string
 export type ItemDataMap = Record<string, ItemData>; // keyed by dotaconstants item key (no 'item_' prefix)
 
+/** One curated fun-pool entry (generated offline by scripts/gen-hero-builds.mjs). */
+export interface HeroBuildItem {
+  key: string;  // ItemDataMap key
+  name: string; // display name
+  why: string;  // punchy reason
+}
+export type HeroBuildsMap = Record<string, { fun: HeroBuildItem[] }>; // keyed by numeric hero id as string
+
 // ---- Threat report (threats.ts) ----
 export type ThreatKind =
   | 'magical-burst'      // magical nuke that BKB blocks

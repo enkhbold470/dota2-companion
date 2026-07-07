@@ -67,6 +67,32 @@ describe('item-build route', () => {
     await app.close();
   });
 
+  it('fun style with a known hero id injects that hero\'s curated pool, not the generic list', async () => {
+    const fetchMock = vi.fn((_i: RequestInfo | URL, _init?: RequestInit) =>
+      Promise.resolve(okItems([{ name: 'Ethereal Blade', reason: 'mana void combo' }])));
+    const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
+    // Hero id 1 = Anti-Mage, present in hero-builds.json.
+    await app.inject({
+      method: 'POST', url: '/item-build',
+      payload: { context: { hero: { id: 1, name: 'Anti-Mage' } }, style: 'fun' },
+    });
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { instructions: string };
+    expect(sent.instructions).toContain('Curated fun pool for THIS hero');
+    // The old one-list-for-every-hero prompt is gone for known heroes.
+    expect(sent.instructions).not.toContain('big magic burst (Dagon');
+    await app.close();
+  });
+
+  it('meta style tells the model to weigh the deterministic engine recs', async () => {
+    const fetchMock = vi.fn((_i: RequestInfo | URL, _init?: RequestInit) =>
+      Promise.resolve(okItems([{ name: 'Black King Bar', reason: 'safe' }])));
+    const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
+    await app.inject({ method: 'POST', url: '/item-build', payload: { context: {}, style: 'meta' } });
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { instructions: string };
+    expect(sent.instructions).toContain('engineRecs');
+    await app.close();
+  });
+
   it('defaults to the meta build style when none is given', async () => {
     const fetchMock = vi.fn((_i: RequestInfo | URL, _init?: RequestInit) =>
       Promise.resolve(okItems([{ name: 'Black King Bar', reason: 'safe' }])));
