@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { HERO_BUILDS } from '@dc/shared';
-import { callOpenAi } from './openai';
+import { callOpenAi, type TextFormat } from './openai';
 
 export interface ItemRouteOptions {
   apiKey: string | null;
@@ -42,6 +42,35 @@ function funStyleLine(context: unknown): string {
     `you may swap in something spicier when the lineup begs for it: ${poolText}. Punchy reasons.`
   );
 }
+
+// Strict schema instead of free json_object mode: guaranteed shape, and the
+// Responses API doesn't demand the word "json" in the input for schema'd formats.
+const ITEMS_SCHEMA: TextFormat = {
+  type: 'json_schema',
+  name: 'item_build',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      items: {
+        type: 'array',
+        minItems: 3,
+        maxItems: 5,
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: 'Exact in-game item name' },
+            reason: { type: 'string', description: '<=10 words why now' },
+          },
+          required: ['name', 'reason'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['items'],
+    additionalProperties: false,
+  },
+};
 
 interface ItemSuggestion {
   name: string;
@@ -110,7 +139,7 @@ export function registerItemRoute(app: FastifyInstance, opts: ItemRouteOptions):
       input: `Context:\n${JSON.stringify(body.context ?? null).slice(0, 8000)}`,
       reasoningEffort: 'low',
       maxOutputTokens: 1500,
-      textFormat: { type: 'json_object' },
+      textFormat: ITEMS_SCHEMA,
       timeoutMs: 30_000,
       fetchImpl: opts.fetchImpl,
     });

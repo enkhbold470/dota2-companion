@@ -29,6 +29,20 @@ const DRAFT_SYSTEM_PROMPT =
   'Use exact official English names, e.g. "Anti-Mage", "Queen of Pain", "Nature\'s Prophet", "Outworld Destroyer". ' +
   'At most 5 per team, each once, only heroes you can clearly identify. Unseen side → empty array.';
 
+const HEROES_SCHEMA: TextFormat = {
+  type: 'json_schema',
+  name: 'hero_list',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      heroes: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    },
+    required: ['heroes'],
+    additionalProperties: false,
+  },
+};
+
 const DRAFT_SCHEMA: TextFormat = {
   type: 'json_schema',
   name: 'draft_sides',
@@ -139,7 +153,7 @@ export function registerVisionRoute(app: FastifyInstance, opts: VisionRouteOptio
       ],
       reasoningEffort: 'low',
       maxOutputTokens: 1200,
-      textFormat: draftMode ? DRAFT_SCHEMA : { type: 'json_object' },
+      textFormat: draftMode ? DRAFT_SCHEMA : HEROES_SCHEMA,
       timeoutMs: 35_000,
       fetchImpl: opts.fetchImpl,
     });

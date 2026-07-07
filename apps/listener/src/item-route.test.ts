@@ -44,9 +44,10 @@ describe('item-build route', () => {
 
     const init = fetchMock.mock.calls[0]?.[1];
     const sent = JSON.parse(String(init?.body)) as {
-      text?: { format?: { type?: string } }; model?: string; reasoning?: { effort?: string };
+      text?: { format?: { type?: string; name?: string } }; model?: string; reasoning?: { effort?: string };
     };
-    expect(sent.text?.format?.type).toBe('json_object');
+    expect(sent.text?.format?.type).toBe('json_schema');
+    expect(sent.text?.format?.name).toBe('item_build');
     expect(sent.model).toBe('gpt-5.4');
     expect(sent.reasoning?.effort).toBe('low');
     await app.close();
