@@ -5,6 +5,13 @@ copyright: Read-only, advisory-only. Uses only Valve GSI.
 directories:
   output: release
 
+# Space-free artifact names. electron-builder writes the filename with hyphens
+# into latest.yml, but GitHub converts spaces in an uploaded asset to dots — so a
+# spaced productName makes the updater look for "Dota-2-Companion-…exe" while the
+# asset is "Dota.2.Companion.…exe" → 404. Naming with hyphens up front keeps the
+# built file, latest.yml, and the GitHub asset identical (no spaces to convert).
+artifactName: Dota-2-Companion-${version}-${arch}.${ext}
+
 # Auto-update feed. electron-builder writes app-update.yml into the package and a
 # latest.yml alongside the installer; electron-updater reads GitHub releases from here.
 publish:
@@ -40,6 +47,8 @@ nsis:
   shortcutName: Dota 2 Companion
   installerSidebar: build/installerSidebar.bmp
   uninstallerSidebar: build/installerSidebar.bmp
+  # No arch in the installer name (it's a universal per-user NSIS), and no spaces.
+  artifactName: Dota-2-Companion-Setup-${version}.${ext}
 
 mac:
   category: public.app-category.games
