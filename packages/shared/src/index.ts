@@ -15,6 +15,7 @@ export * from './coach';
 export * from './heromatch';
 export * from './itemmatch';
 export * from './assets';
+export * from './dsp';
 export * from './eeg';
 export * from './events';
 export * from './session';

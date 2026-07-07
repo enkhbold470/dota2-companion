@@ -14,69 +14,18 @@
  * multi-second windows. See the doc's "Reality banner".
  */
 
-export type Band = 'delta' | 'theta' | 'alpha' | 'beta' | 'gamma';
-
-/** Classic clinical band edges in Hz (match firmware/v4/bands.json). */
-export const BAND_HZ: Record<Band, [number, number]> = {
-  delta: [0.5, 4],
-  theta: [4, 8],
-  alpha: [8, 13],
-  beta: [13, 30],
-  gamma: [30, 45],
-};
-
-export type BandPowers = Record<Band, number>;
-
-const ZERO_BANDS: BandPowers = { delta: 0, theta: 0, alpha: 0, beta: 0, gamma: 0 };
+import { bandPowers as dspBandPowers, mainsRatio, EEG_FS, type BandPowers } from './dsp';
 
 /**
- * Periodogram band powers over a window of raw samples.
- * Detrends (removes mean), applies a Hann window, then integrates the squared
- * DFT magnitude across the bins that fall in each band. O(N · bins) — cheap at
- * the ~1 Hz cadence we run it (N≈512, bins≈90).
+ * Band powers over a window of raw ADS1220 counts. Delegates to the DSP pipeline
+ * (detrend → software mains notch → 1–45 Hz band-pass → Welch PSD → per-band
+ * integration) so the frequency axis is honest at 175 SPS. `lineFreq` is the
+ * mains frequency to notch (60 in NA, 50 elsewhere; 0 disables).
  */
-export function computeBandPowers(samples: readonly number[], sampleRateHz: number): BandPowers {
-  const N = samples.length;
-  if (N < 16 || sampleRateHz <= 0) return { ...ZERO_BANDS };
-
-  let mean = 0;
-  for (const s of samples) mean += s;
-  mean /= N;
-
-  // Hann-windowed, mean-removed signal.
-  const w = new Array<number>(N);
-  for (let n = 0; n < N; n++) {
-    const hann = 0.5 - 0.5 * Math.cos((2 * Math.PI * n) / (N - 1));
-    w[n] = (samples[n]! - mean) * hann;
-  }
-
-  const df = sampleRateHz / N;                 // frequency resolution per bin
-  const kMax = Math.min(Math.floor(N / 2), Math.ceil(BAND_HZ.gamma[1] / df));
-  const kMin = Math.max(1, Math.floor(BAND_HZ.delta[0] / df));
-
-  const out: BandPowers = { ...ZERO_BANDS };
-  for (let k = kMin; k <= kMax; k++) {
-    let re = 0;
-    let im = 0;
-    const c = (2 * Math.PI * k) / N;
-    for (let n = 0; n < N; n++) {
-      re += w[n]! * Math.cos(c * n);
-      im -= w[n]! * Math.sin(c * n);
-    }
-    const power = re * re + im * im;
-    const f = k * df;
-    const band = bandOf(f);
-    if (band) out[band] += power;
-  }
-  return out;
-}
-
-function bandOf(f: number): Band | null {
-  for (const band of Object.keys(BAND_HZ) as Band[]) {
-    const [lo, hi] = BAND_HZ[band];
-    if (f >= lo && f < hi) return band;
-  }
-  return null;
+export function computeBandPowers(
+  samples: readonly number[], sampleRateHz: number = EEG_FS, lineFreq = 60,
+): BandPowers {
+  return dspBandPowers(samples, sampleRateHz, lineFreq);
 }
 
 export interface FocusFeatures {
@@ -103,8 +52,14 @@ export function focusFeatures(bp: BandPowers): FocusFeatures {
  * Contact-quality heuristic (0 unusable … 3 clean) from a raw window.
  * ADS1220 rails near 0 or its 2^23 full-scale when an electrode is off; a
  * flat/near-constant window is also unusable. This gates every metric.
+ *
+ * Pass `fs`/`lineFreq` to also fold in the mains-band power ratio: a window
+ * dominated by 50/60 Hz pickup is poor electrode contact even if it isn't
+ * flat or railed. Called with a single arg it keeps the legacy behavior.
  */
-export function contactQuality(samples: readonly number[]): 0 | 1 | 2 | 3 {
+export function contactQuality(
+  samples: readonly number[], fs?: number, lineFreq = 60,
+): 0 | 1 | 2 | 3 {
   const N = samples.length;
   if (N < 16) return 0;
   let min = Infinity;
@@ -129,8 +84,16 @@ export function contactQuality(samples: readonly number[]): 0 | 1 | 2 | 3 {
 
   if (flat) return 0;
   if (clipping) return 1;
-  if (railedLow || railedHigh) return 2;
-  return 3;
+  let q: 0 | 1 | 2 | 3 = (railedLow || railedHigh) ? 2 : 3;
+
+  // Mains contamination knocks a clean-looking window down a grade (needs fs to
+  // resolve the line frequency). >50% of in-band power at 50/60 Hz ⇒ unusable.
+  if (fs && fs > 0) {
+    const ratio = mainsRatio(samples, fs, lineFreq);
+    if (ratio > 0.5) q = 1;
+    else if (ratio > 0.3 && q === 3) q = 2;
+  }
+  return q;
 }
 
 /** Rolling mean/SD over a bounded window — the per-session baseline. */
@@ -304,4 +267,39 @@ function nearest(timeline: readonly FocusReading[], t: number): FocusReading | n
     if (d < bestD) { bestD = d; best = r; }
   }
   return best;
+}
+
+/**
+ * The device-agnostic sample shape from NEUROFOCUS_BIOMETRIC_LAYER.md §2.1 — an
+ * EEGSource emits these. `source:'derived'` marks a computed index (single ear
+ * channel, coarse proxy), never a vendor's native metric. Scalars are 0..1.
+ */
+export interface MetricSample {
+  t: number;
+  focus?: number;
+  stress?: number;
+  engagement?: number;
+  relaxation?: number;
+  source: 'native' | 'derived';
+  quality: 0 | 1 | 2 | 3;
+}
+
+/**
+ * Turn a raw-counts window into a derived MetricSample: preprocess+Welch band
+ * powers → focus/stress/engagement, gated on contact quality. Normalizes the
+ * unbounded focus ratio to 0..1 with a soft squash so it's comparable to native
+ * 0..1 metrics. Emits quality but no state — the FocusMonitor owns hysteresis.
+ */
+export function deriveMetric(
+  samples: readonly number[], t: number, fs: number = EEG_FS, lineFreq = 60,
+): MetricSample {
+  const quality = contactQuality(samples, fs, lineFreq);
+  if (quality <= 1) return { t, source: 'derived', quality };
+  const f = focusFeatures(computeBandPowers(samples, fs, lineFreq));
+  // focus ratio beta/(alpha+theta) is ~0..several; squash to 0..1.
+  const focus = f.focus / (1 + f.focus);
+  return {
+    t, source: 'derived', quality,
+    focus, engagement: focus, stress: f.stressBeta, relaxation: f.relaxation,
+  };
 }

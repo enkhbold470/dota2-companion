@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   computeBandPowers, focusFeatures, contactQuality, FocusMonitor, deriveEvents,
-  SESSION_FORMAT_V2,
+  SESSION_FORMAT_V2, EEG_FS,
   type FocusReading, type MatchEvent, type NormalizedState, type SessionVideoMeta,
 } from '@dc/shared';
 import { RECORDING_URL } from '../config';
@@ -17,7 +17,8 @@ type StampedEvent = MatchEvent & { tMs?: number };
 
 const AUTO_RECORD_KEY = 'nf.autoRecord';
 
-const WINDOW = 1024;             // ~1.7 s at 600 SPS — the analysis window (df ≈ 0.6 Hz)
+const WINDOW = 700;              // 4 s at 175 SPS — the analysis window (df ≈ 0.25 Hz)
+const LINE_FREQ = 60;            // mains to notch in software (60 NA / 50 EU)
 const MAX_BUFFER = 4096;         // ring-buffer cap for band-power raw counts
 const TICK_MS = 1000;            // compute focus once per second
 const LIVE_WINDOW = 180;         // rolling readings kept for the always-on live strip (~3 min)
@@ -307,14 +308,13 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
       } else {
         const buf = buffer.current;
         if (buf.length < 64) return;               // not enough signal yet
-        const dt = Math.max(0.5, TICK_MS / 1000);
-        // Firmware streams ADS1220 at 600 SPS; measure it live (BLE drops sag it a
-        // little) and clamp to a sane band so the periodogram's Hz axis is right.
-        const rate = Math.min(700, Math.max(200, sinceTick.current / dt)); // measured sps
         sinceTick.current = 0;
+        // fs is FIXED at 175 SPS (ADS1220 DR_LVL_3, verified against firmware).
+        // Do NOT measure the rate off arrival timing — BLE jitter would wobble the
+        // frequency axis and silently corrupt every band. See @dc/shared EEG_FS.
         const win = buf.slice(-WINDOW);
-        quality = contactQuality(win);
-        features = focusFeatures(computeBandPowers(win, rate));
+        quality = contactQuality(win, EEG_FS, LINE_FREQ);
+        features = focusFeatures(computeBandPowers(win, EEG_FS, LINE_FREQ));
       }
 
       const r = monitor.current.push({ t: clock, features, quality, recentDeaths, inFight });

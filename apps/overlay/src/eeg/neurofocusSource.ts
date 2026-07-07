@@ -5,7 +5,10 @@
  *   service        0338ff7c-6251-4029-a5d5-24e4fa856c8d
  *   data char      ad615f2b-cc93-4155-9e4d-f5f32cb9a2d7  (READ + NOTIFY)
  *   command char   b5e3d1c9-8a2f-4e7b-9c6d-1a3f5e7b9c2d  (WRITE)  ·  'b' start / 's' stop / 'v' reset
- *   device name    NEUROFOCUS_V4*  ·  ADS1220 single channel, 600 SPS, signed 24-bit counts
+ *   device name    NEUROFOCUS_V4*  ·  ADS1220 single channel, 175 SPS, signed 24-bit counts
+ *
+ * ★ 175 SPS (DR_LVL_3), not the 600 the docs mention — the DSP in @dc/shared
+ *   hardcodes EEG_FS=175. This file only decodes frames; it doesn't touch fs.
  *
  * Wire format (config.h `BLE_DATA_MODE`) — the shipped firmware default is
  * BINARY_BATCH, so we parse that first and fall back to the ASCII variants:

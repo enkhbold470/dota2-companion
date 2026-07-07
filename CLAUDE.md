@@ -54,6 +54,7 @@ The coaching engines (`threats.ts`, `items.ts`, `skills.ts`, `coach.ts`) are a r
 - `hasTp` reads only slot `teleport0` — not the backpack or inventory slots.
 - `noUncheckedIndexedAccess: true` is set in `tsconfig.base.json`, so `arr[i]` is `T | undefined`. New code must handle that.
 - Recorded EEG sessions (`neurofocus_ble_eeg_v2`) carry two timebases: `t` is the GSI game clock (seconds, negative pre-horn), `tMs` is wall clock (epoch ms). `packages/shared/src/session.ts` builds the bidirectional map between them — that's how the review UI seeks the screen recording to a focus dip. The session writer keeps scalars + `video` before the big arrays (samples last) so `GET /recordings` can head-parse metadata via `parseSessionHead` without reading megabytes.
+- **EEG sample rate is 175 SPS, hardcoded as `EEG_FS` in `packages/shared/src/dsp.ts`** — the ADS1220 runs DR_LVL_3 (verify: `../neurofocus/firmware/v4/src/ads1220_driver.cpp`), NOT the 600 the firmware docs mention. Never measure fs from BLE arrival timing; jitter would corrupt the frequency axis. `dsp.ts` is the pure DSP (detrend → software mains notch → 1–45 Hz band-pass → Welch PSD → band powers); `eeg.ts` consumes it. The overlay talks to the board via the `EEGSource` interface (`apps/overlay/src/eeg/eegSource.ts`, `WebBluetoothEEGSource` + `StubEEGSource`); transport/frame-decode is `neurofocusSource.ts`.
 
 ### Posture (non-negotiable)
 
