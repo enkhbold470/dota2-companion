@@ -18,6 +18,11 @@ export interface ServerOptions {
   coachAllowOrigin?: string;
   /** Persist a key set via /settings (e.g. the desktop app writes openai-key.txt). */
   onSaveOpenAiKey?: (key: string) => void;
+  /** App version shown in the overlay (desktop passes app.getVersion()). */
+  version?: string;
+  /** Live auto-updater state + manual check trigger (desktop only). */
+  updaterStatus?: () => { state: string; info: string | null };
+  checkUpdates?: () => void;
   /** Fallback folder for saved EEG recordings when the client hasn't set a path. */
   recordingsDir?: string;
   /** When set, the built overlay is served from this dir so the app is one process. */
@@ -41,7 +46,12 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
   registerItemRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
   registerVisionRoute(app, { apiKey: null, getApiKey, allowOrigin: opts.coachAllowOrigin });
   registerSettingsRoute(app, {
-    getStatus: () => ({ openaiKeySet: !!currentKey }),
+    getStatus: () => ({
+      openaiKeySet: !!currentKey,
+      version: opts.version ?? null,
+      updater: opts.updaterStatus?.() ?? null,
+    }),
+    checkUpdates: opts.checkUpdates,
     setOpenAiKey: (key) => {
       currentKey = key.trim() === '' ? null : key.trim();
       if (currentKey && opts.onSaveOpenAiKey) opts.onSaveOpenAiKey(currentKey);

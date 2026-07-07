@@ -3,7 +3,7 @@ import { app, BrowserWindow, shell, dialog, session, desktopCapturer } from 'ele
 // undefined. Use the named export (esbuild reads it off the require() result).
 import { autoUpdater } from 'electron-updater';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { buildServer } from '../../listener/src/server';
 import { Hub } from '../../listener/src/hub';
@@ -86,15 +86,29 @@ function readOpenAiKey(dir: string): string | null {
   return null;
 }
 
+// Updater state, surfaced through GET /settings so the overlay can show "checking /
+// downloading 42% / error: …" instead of failures dying in an invisible console.
+let updaterState: { state: string; info: string | null } = {
+  state: app.isPackaged ? 'idle' : 'dev', info: null,
+};
+function setUpdaterState(state: string, info?: string): void {
+  updaterState = { state, info: info ?? null };
+}
+
 // In-app software updates from GitHub releases. The user always chooses — we never
 // download or install without a click. Best-effort: an update check must never block
 // or crash the app (offline, rate-limited, unsigned dev build all fail quiet).
-function setupAutoUpdate(win: BrowserWindow): void {
+function setupAutoUpdate(win: BrowserWindow, dir: string): void {
   if (!app.isPackaged) return; // dev has no release feed
   autoUpdater.autoDownload = false;          // ask before downloading
   autoUpdater.autoInstallOnAppQuit = true;   // if they defer, install on next quit
 
+  autoUpdater.on('checking-for-update', () => setUpdaterState('checking'));
+  autoUpdater.on('update-not-available', () => setUpdaterState('up-to-date'));
+  autoUpdater.on('download-progress', (p) => setUpdaterState('downloading', `${Math.round(p.percent)}%`));
+
   autoUpdater.on('update-available', (info) => {
+    setUpdaterState('available', info.version);
     void dialog.showMessageBox(win, {
       type: 'info', buttons: ['Download & install', 'Later'], defaultId: 0, cancelId: 1,
       title: 'Update available',
@@ -104,6 +118,7 @@ function setupAutoUpdate(win: BrowserWindow): void {
   });
 
   autoUpdater.on('update-downloaded', (info) => {
+    setUpdaterState('downloaded', info.version);
     void dialog.showMessageBox(win, {
       type: 'info', buttons: ['Restart & install', 'On next launch'], defaultId: 0, cancelId: 1,
       title: 'Update ready',
@@ -113,7 +128,13 @@ function setupAutoUpdate(win: BrowserWindow): void {
   });
 
   autoUpdater.on('error', (err) => {
-    console.error('[updater]', err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    setUpdaterState('error', msg);
+    console.error('[updater]', msg);
+    // Persist for diagnosis — "the update didn't work" is undebuggable otherwise.
+    try {
+      appendFileSync(join(dir, 'updater.log'), `${new Date().toISOString()} ${msg}\n`, 'utf8');
+    } catch { /* non-fatal */ }
   });
 
   void autoUpdater.checkForUpdates();
@@ -131,6 +152,10 @@ async function start(): Promise<void> {
 
   const server = buildServer({
     token, hub: new Hub(), openaiKey, staticDir,
+    // Version + updater surface for the overlay's Settings panel.
+    version: app.getVersion(),
+    updaterStatus: () => updaterState,
+    checkUpdates: () => { if (app.isPackaged) void autoUpdater.checkForUpdates(); },
     // Default folder for saved EEG recordings (the user can override the path in
     // Settings → Raw EEG data folder).
     recordingsDir: join(dir, 'recordings'),
@@ -158,7 +183,7 @@ async function start(): Promise<void> {
   const win = new BrowserWindow({
     width: 460,
     height: 920,
-    title: 'Dota 2 Companion',
+    title: `Dota 2 Companion v${app.getVersion()}`,
     autoHideMenuBar: true,
     // Match the overlay's app background so the window never flashes white
     // before the page paints (and around the content while loading).
@@ -166,6 +191,8 @@ async function start(): Promise<void> {
     webPreferences: { contextIsolation: true },
   });
   await win.loadURL(`http://127.0.0.1:${PORT}`);
+  // Keep the versioned title — the page's <title> would overwrite it on load.
+  win.on('page-title-updated', (e) => e.preventDefault());
   // Open any external links (e.g. sources) in the system browser, not the app.
   win.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
@@ -184,7 +211,7 @@ async function start(): Promise<void> {
   });
 
   // Offer in-app updates (best-effort; user chooses).
-  setupAutoUpdate(win);
+  setupAutoUpdate(win, dir);
 
   if (!cfg.installed) {
     void dialog.showMessageBox(win, {

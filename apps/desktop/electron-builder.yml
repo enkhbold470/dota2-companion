@@ -25,13 +25,21 @@ extraResources:
 win:
   target:
     - nsis
+  # NSIS/file metadata publisher. NOTE: this does NOT remove the SmartScreen
+  # "Unknown publisher" warning — only an Authenticode code-signing certificate
+  # (e.g. Azure Trusted Signing) does that.
+  publisherName: NeuroFocus
 
+# Branded assisted installer: NeuroFocus sidebar art + license/privacy/terms
+# page (build/license.txt). Icons come from build/icon.png (auto-converted).
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   shortcutName: Dota 2 Companion
+  installerSidebar: build/installerSidebar.bmp
+  uninstallerSidebar: build/installerSidebar.bmp
 
 mac:
   category: public.app-category.games

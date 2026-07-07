@@ -2,9 +2,17 @@ import type { FastifyInstance } from 'fastify';
 
 export interface SettingsRouteOptions {
   /** Current status, read live. */
-  getStatus: () => { openaiKeySet: boolean };
+  getStatus: () => {
+    openaiKeySet: boolean;
+    /** App version (desktop passes app.getVersion(); absent in bare dev). */
+    version?: string | null;
+    /** Auto-updater state, e.g. { state: 'downloading', info: '42%' }. */
+    updater?: { state: string; info: string | null } | null;
+  };
   /** Persist + hot-swap a new OpenAI key. Empty string clears it. */
   setOpenAiKey: (key: string) => void;
+  /** Trigger an update check (desktop only — absent means 501). */
+  checkUpdates?: () => void;
   allowOrigin?: string;
 }
 
@@ -45,6 +53,23 @@ export function registerSettingsRoute(app: FastifyInstance, opts: SettingsRouteO
   app.get('/settings', async (req, reply) => {
     cors(req, reply);
     return reply.code(200).send(opts.getStatus());
+  });
+
+  app.options('/settings/check-updates', async (req, reply) =>
+    reply.code(204)
+      .header('access-control-allow-origin', resolveOrigin(req.headers.origin))
+      .header('access-control-allow-methods', 'POST')
+      .header('access-control-allow-headers', 'content-type')
+      .header('vary', 'origin')
+      .send());
+
+  // Manual update check — the updater's result lands in GET /settings `updater`,
+  // so failures are visible in the UI instead of dying in a console nobody sees.
+  app.post('/settings/check-updates', async (req, reply) => {
+    cors(req, reply);
+    if (!opts.checkUpdates) return reply.code(501).send({ error: 'not-desktop' });
+    opts.checkUpdates();
+    return reply.code(200).send({ ok: true });
   });
 
   app.post('/settings/openai-key', async (req, reply) => {

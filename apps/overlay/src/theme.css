@@ -1,16 +1,36 @@
 /*
  * Global base — fills the whole window with the app background (kills the white
  * gutter around the panel) and gives native controls the design-system look.
- * Token values mirror theme.tsx `t.color`; keep them in sync.
+ * Token values mirror theme.tsx `t.color` (= neurofocus.dev layout.css :root);
+ * keep them in sync.
  */
+@font-face {
+  font-family: 'Inter';
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/Inter-400.woff') format('woff');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/Inter-500.woff') format('woff');
+}
+@font-face {
+  font-family: 'Inter';
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/Inter-600.woff') format('woff');
+}
+
 :root {
-  --app-bg: #0b1220;
-  --panel: #111827;
-  --inset: #1f2937;
-  --border-strong: #374151;
-  --text: #e5e7eb;
-  --text-faint: #6b7280;
-  --accent: #60a5fa;
+  --app-bg: #0a0a0c;
+  --panel: #131019;
+  --inset: #1f1f23;
+  --border-strong: #5b5b64;
+  --text: #fbfbfb;
+  --text-faint: #7a7a83;
+  --accent: #f1b27a;
 }
 
 * { box-sizing: border-box; }
@@ -24,7 +44,7 @@ body {
   margin: 0;
   background: var(--app-bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 12px;
   -webkit-font-smoothing: antialiased;
 }

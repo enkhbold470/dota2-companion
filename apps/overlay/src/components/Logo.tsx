@@ -1,53 +1,40 @@
 /**
- * App mascot — a cute little coach-bot (headset + friendly grin) drawn in the
- * design-system accent gradient. Self-contained SVG so it works as an inline
- * logo, a favicon, or an Electron window icon.
+ * The NeuroFocus mark — monochrome EEG-electrode glyph in a ringed circle,
+ * copied from the brand source (neurofocus.dev static/logo.svg). Self-contained
+ * SVG so it works inline, as a favicon, or as an Electron window icon.
  */
-export function Logo({ size = 28, title = 'Dota Coach' }: { size?: number; title?: string }) {
+export function Logo({ size = 28, title = 'NeuroFocus' }: { size?: number; title?: string }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 64 64"
+      viewBox="0 0 300 300"
       role="img"
       aria-label={title}
       xmlns="http://www.w3.org/2000/svg"
+      style={{ borderRadius: '50%' }}
     >
       <title>{title}</title>
-      <defs>
-        <linearGradient id="dcMascotBody" x1="16" y1="8" x2="48" y2="58" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#60a5fa" />
-          <stop offset="1" stopColor="#a855f7" />
-        </linearGradient>
-      </defs>
-
-      {/* headset band */}
-      <path d="M14 30a18 18 0 0 1 36 0" fill="none" stroke="#c7d2fe" strokeWidth="3.5" strokeLinecap="round" />
-      {/* ear cups */}
-      <rect x="9.5" y="28" width="8" height="13" rx="4" fill="#7c3aed" />
-      <rect x="46.5" y="28" width="8" height="13" rx="4" fill="#7c3aed" />
-
-      {/* body */}
-      <rect x="16" y="18" width="32" height="34" rx="15" fill="url(#dcMascotBody)" />
-      {/* face plate */}
-      <rect x="21" y="26" width="22" height="17" rx="8.5" fill="#0b1220" />
-
-      {/* eyes */}
-      <circle cx="28.5" cy="34.5" r="3.4" fill="#e5e7eb" />
-      <circle cx="35.5" cy="34.5" r="3.4" fill="#e5e7eb" />
-      <circle cx="29.3" cy="35.1" r="1.5" fill="#0b1220" />
-      <circle cx="36.3" cy="35.1" r="1.5" fill="#0b1220" />
-      {/* eye shine */}
-      <circle cx="27.7" cy="33.4" r="0.9" fill="#93c5fd" />
-      <circle cx="34.7" cy="33.4" r="0.9" fill="#93c5fd" />
-
-      {/* mic boom + tip */}
-      <path d="M46 40c3 0 4 3 4 6" fill="none" stroke="#c7d2fe" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="50" cy="47" r="2.2" fill="#4ade80" />
-
-      {/* little antenna spark */}
-      <line x1="32" y1="12" x2="32" y2="18" stroke="#a855f7" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="32" cy="10" r="2.4" fill="#fbbf24" />
+      <circle cx="150" cy="150" r="150" fill="black" />
+      <circle cx="150" cy="150" r="120" stroke="white" strokeWidth="10" fill="none" />
+      <circle cx="150" cy="67" r="14.5" fill="white" stroke="white" />
+      <circle cx="242" cy="129" r="14.5" fill="white" stroke="white" />
+      <circle cx="150" cy="118" r="14.5" fill="white" stroke="white" />
+      <circle cx="108" cy="99" r="9.5" fill="white" stroke="white" />
+      <rect x="103.5" y="104.5" width="9" height="157" fill="white" stroke="white" />
+      <rect x="130.5" y="187.5" width="9" height="81" fill="white" stroke="white" />
+      <rect x="163.5" y="187.5" width="9" height="81" fill="white" stroke="white" />
+      <circle cx="195" cy="99" r="9.5" fill="white" stroke="white" />
+      <circle cx="222" cy="175" r="9.5" fill="white" stroke="white" />
+      <rect x="190.5" y="103.5" width="9" height="157" fill="white" stroke="white" />
+      <rect x="217.5" y="182.5" width="9" height="62" fill="white" stroke="white" />
+      <rect x="237.5" y="139.5" width="9" height="85" fill="white" stroke="white" />
+      <circle cx="15" cy="15" r="14.5" transform="matrix(-1 0 0 1 71 114)" fill="white" stroke="white" />
+      <circle cx="10" cy="10" r="9.5" transform="matrix(-1 0 0 1 86 165)" fill="white" stroke="white" />
+      <rect x="-0.5" y="0.5" width="9" height="62" transform="matrix(-1 0 0 1 80 182)" fill="white" stroke="white" />
+      <rect x="-0.5" y="0.5" width="9" height="85" transform="matrix(-1 0 0 1 60 140)" fill="white" stroke="white" />
+      <rect x="145.5" y="129.5" width="9" height="47" fill="white" stroke="white" />
+      <path d="M130.513 186.5C130.773 181.486 134.921 177.5 140 177.5H163C168.079 177.5 172.227 181.486 172.487 186.5H130.513Z" fill="white" stroke="white" />
     </svg>
   );
 }

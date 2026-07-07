@@ -8,6 +8,26 @@ export const SETUP_DONE_KEY = 'nf.setupDone';
 
 type Save = 'idle' | 'saving' | 'ok' | 'bad-key' | 'error';
 
+interface SettingsStatus {
+  openaiKeySet?: boolean;
+  version?: string | null;
+  updater?: { state: string; info: string | null } | null;
+}
+
+function updaterLabel(u: { state: string; info: string | null } | null | undefined): string {
+  if (!u) return '';
+  switch (u.state) {
+    case 'checking': return 'Checking…';
+    case 'up-to-date': return 'Up to date ✓';
+    case 'available': return `v${u.info ?? '?'} available — see the prompt`;
+    case 'downloading': return `Downloading… ${u.info ?? ''}`;
+    case 'downloaded': return `v${u.info ?? '?'} ready — restart to install`;
+    case 'error': return `Update error: ${u.info ?? 'unknown'}`;
+    case 'dev': return 'dev build (no update feed)';
+    default: return '';
+  }
+}
+
 /** Reads the persisted raw-EEG folder path (client option). */
 export function getRawDataPath(): string {
   try { return localStorage.getItem(RAW_PATH_KEY) ?? ''; } catch { return ''; }
@@ -29,15 +49,29 @@ export function SettingsPanel({ open, onClose, session }: SettingsPanelProps) {
   const [key, setKey] = useState('');
   const [save, setSave] = useState<Save>('idle');
   const [rawPath, setRawPath] = useState(getRawDataPath());
+  const [about, setAbout] = useState<SettingsStatus | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setSave('idle');
     fetch(SETTINGS_URL)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { openaiKeySet?: boolean } | null) => setKeySet(d?.openaiKeySet ?? false))
+      .then((r) => (r.ok ? (r.json() as Promise<SettingsStatus>) : null))
+      .then((d) => { setKeySet(d?.openaiKeySet ?? false); setAbout(d); })
       .catch(() => setKeySet(null));
   }, [open]);
+
+  // Kick a manual update check, then poll so progress/errors show inline.
+  const checkUpdates = async () => {
+    try { await fetch(`${SETTINGS_URL}/check-updates`, { method: 'POST' }); } catch { return; }
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        const d = (await (await fetch(SETTINGS_URL)).json()) as SettingsStatus;
+        setAbout(d);
+        if (d.updater && ['up-to-date', 'error', 'downloaded'].includes(d.updater.state)) break;
+      } catch { break; }
+    }
+  };
 
   if (!open) return null;
 
@@ -164,6 +198,31 @@ export function SettingsPanel({ open, onClose, session }: SettingsPanelProps) {
             value={rawPath} onChange={(e) => saveRawPath(e.target.value)}
             placeholder="e.g. C:\\Users\\you\\NeuroFocus\\dota" style={inputStyle}
           />
+        </div>
+
+        {/* --- About / updates --- */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm, borderTop: `1px solid ${t.color.border}`, paddingTop: t.space.md }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: t.space.sm, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: t.font.sm, color: t.color.textMuted }}>
+              Dota 2 Companion{about?.version ? ` v${about.version}` : ' (dev)'}
+            </span>
+            {about?.version != null && (
+              <button type="button" onClick={() => void checkUpdates()} style={btn('ghost')}>
+                Check for updates
+              </button>
+            )}
+            <span style={{
+              fontSize: t.font.xs,
+              color: about?.updater?.state === 'error' ? t.brand.death : t.color.textFaint,
+            }}>
+              {updaterLabel(about?.updater)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: t.space.md, fontSize: t.font.xs }}>
+            <a href="https://neurofocus.dev" target="_blank" rel="noreferrer" style={{ color: t.color.textFaint }}>neurofocus.dev</a>
+            <a href="https://neurofocus.dev/privacy" target="_blank" rel="noreferrer" style={{ color: t.color.textFaint }}>Privacy</a>
+            <a href="https://neurofocus.dev/terms" target="_blank" rel="noreferrer" style={{ color: t.color.textFaint }}>Terms</a>
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import type { ItemRecommendation } from '@dc/shared';
 import { ItemAdvicePanel } from './ItemAdvicePanel';
+import { t } from '../theme';
 
 const rec = (over: Partial<ItemRecommendation> = {}): ItemRecommendation => ({
   itemKey: 'black_king_bar',
@@ -27,7 +28,7 @@ it('renders name, cost, BUY NOW badge and reasons for an affordable rec', () => 
   render(<ItemAdvicePanel recs={[rec({ affordable: true })]} gold={5000} hasEnemies={true} />);
   expect(screen.getByText('Black King Bar')).toBeInTheDocument();
   expect(screen.getByText('4050g')).toBeInTheDocument();
-  expect(screen.getByText('BUY NOW')).toHaveStyle({ color: '#4ade80' });
+  expect(screen.getByText('BUY NOW')).toHaveStyle({ color: t.color.success });
   expect(screen.getByText('Blocks Lion Hex')).toBeInTheDocument();
   expect(screen.getByText('Blocks Laguna Blade')).toBeInTheDocument();
 });

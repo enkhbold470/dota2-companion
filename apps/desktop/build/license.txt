@@ -1,0 +1,16 @@
+Dota 2 Companion — by NeuroFocus (https://neurofocus.dev)
+
+READ-ONLY, ADVISORY-ONLY. This app consumes only Valve's official Game State
+Integration (GSI). It never reads game memory, never injects code, and never
+automates input.
+
+PRIVACY. Everything stays on your machine: game state, EEG/focus sessions, and
+screen recordings are stored locally and served only on 127.0.0.1. Nothing is
+uploaded. Optional AI features send only the coaching context you trigger to
+OpenAI using your own API key. Full policy: https://neurofocus.dev/privacy
+
+TERMS. Provided "as is", without warranty of any kind. Not affiliated with or
+endorsed by Valve Corporation. Dota 2 is a trademark of Valve Corporation.
+Full terms: https://neurofocus.dev/terms
+
+By installing, you agree to the terms above.

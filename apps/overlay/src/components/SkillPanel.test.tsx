@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import type { SkillReadout } from '@dc/shared';
 import { SkillPanel } from './SkillPanel';
+import { t } from '../theme';
 
 const base: SkillReadout = {
   key: 'lina_laguna_blade',
@@ -48,7 +49,7 @@ it('colors physical and pure damage badges', () => {
   );
   expect(screen.getByText('P')).toHaveStyle({ color: '#f87171' });
   expect(screen.getByText('Pure')).toHaveStyle({ color: '#fbbf24' });
-  expect(screen.getByText('?')).toHaveStyle({ color: '#9ca3af' });
+  expect(screen.getByText('?')).toHaveStyle({ color: t.color.textMuted });
 });
 
 it('omits damage/cd/mana when null and shows the live cooldown in amber', () => {
@@ -64,7 +65,7 @@ it('omits damage/cd/mana when null and shows the live cooldown in amber', () => 
   expect(screen.queryByText(/→/)).not.toBeInTheDocument();
   expect(screen.queryByText(/CD 60s/)).not.toBeInTheDocument();
   expect(screen.queryByText(/mana/)).not.toBeInTheDocument();
-  expect(screen.getByText('on CD 12s')).toHaveStyle({ color: '#fbbf24' });
+  expect(screen.getByText('on CD 12s')).toHaveStyle({ color: t.color.warn });
 });
 
 it('tags passives and dims unleveled skills', () => {
