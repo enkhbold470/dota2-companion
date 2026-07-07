@@ -129,7 +129,9 @@ function setupAutoUpdate(win: BrowserWindow, dir: string): void {
 
   autoUpdater.on('error', (err) => {
     const msg = err instanceof Error ? err.message : String(err);
-    setUpdaterState('error', msg);
+    // First line only, capped — raw HTTP header dumps (cookies etc.) belong in
+    // the log file, not the Settings UI.
+    setUpdaterState('error', msg.split('\n')[0]!.slice(0, 140));
     console.error('[updater]', msg);
     // Persist for diagnosis — "the update didn't work" is undebuggable otherwise.
     try {
