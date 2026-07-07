@@ -9,6 +9,11 @@ export const VISION_URL = `${origin}/vision`;
 export const SETTINGS_URL = `${origin}/settings`;
 export const OPENAI_KEY_URL = `${origin}/settings/openai-key`;
 export const RECORDING_URL = `${origin}/recording`;
+export const VIDEO_START_URL = `${origin}/video/start`;
+export const VIDEO_CHUNK_URL = `${origin}/video/chunk`;
+export const VIDEO_FINISH_URL = `${origin}/video/finish`;
+export const RECORDINGS_URL = `${origin}/recordings`;
+export const RECORDING_FILE_URL = `${origin}/recordings/file`;
 
 export const WS_URL = (() => {
   const u = new URL(origin);

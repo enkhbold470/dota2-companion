@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   computeBandPowers, focusFeatures, contactQuality, FocusMonitor, deriveEvents,
-  type FocusReading, type MatchEvent, type NormalizedState,
+  SESSION_FORMAT_V2,
+  type FocusReading, type MatchEvent, type NormalizedState, type SessionVideoMeta,
 } from '@dc/shared';
 import { RECORDING_URL } from '../config';
 import { getRawDataPath } from '../components/SettingsPanel';
 import { NeuroFocusSource, type NeuroFocusStatus } from './neurofocusSource';
+import { ScreenRecorder } from '../video/screenRecorder';
 
 export type FocusMode = 'off' | 'device' | 'demo';
+
+/** Wall-clock stamps let the review UI map game-clock t → video seek offset. */
+type StampedReading = FocusReading & { tMs: number };
+type StampedEvent = MatchEvent & { tMs?: number };
+
+const AUTO_RECORD_KEY = 'nf.autoRecord';
 
 const WINDOW = 1024;             // ~1.7 s at 600 SPS — the analysis window (df ≈ 0.6 Hz)
 const MAX_BUFFER = 4096;         // ring-buffer cap for band-power raw counts
@@ -37,6 +45,15 @@ export interface FocusSession {
   startRecording: () => void;
   stopRecording: () => Promise<void>;
   lastSave: SaveResult | null;
+  /** Screen capture is armed (stream held); recordings will include video. */
+  captureArmed: boolean;
+  /** A video is being written right now (recording && armed at start time). */
+  videoRecording: boolean;
+  armCapture: () => Promise<void>;
+  disarmCapture: () => void;
+  /** Start/stop recording automatically at the game horn / game end. */
+  autoRecord: boolean;
+  setAutoRecord: (v: boolean) => void;
 }
 
 /**
@@ -61,6 +78,11 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
   const [recordStartedMs, setRecordStartedMs] = useState<number | null>(null);
   const [sampleCount, setSampleCount] = useState(0);
   const [lastSave, setLastSave] = useState<SaveResult | null>(null);
+  const [captureArmed, setCaptureArmed] = useState(false);
+  const [videoRecording, setVideoRecording] = useState(false);
+  const [autoRecord, setAutoRecordState] = useState<boolean>(() => {
+    try { return localStorage.getItem(AUTO_RECORD_KEY) === '1'; } catch { return false; }
+  });
 
   const buffer = useRef<number[]>([]);
   const sinceTick = useRef(0);
@@ -70,15 +92,26 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
   const gsi = useRef<NormalizedState | null>(state);
   gsi.current = state;
   const prevState = useRef<NormalizedState | null>(null);
-  const eventsRef = useRef<MatchEvent[]>([]);
+  const eventsRef = useRef<StampedEvent[]>([]);
   const demoPhase = useRef(0);
 
   // Recording state, held in refs so the sample handler / interval read it live.
   const recordingRef = useRef(false);
   const recordRaw = useRef<number[]>([]);
-  const recordedRef = useRef<FocusReading[]>([]);
+  const recordedRef = useRef<StampedReading[]>([]);
   const recordStartMs = useRef<number | null>(null);
   const recordTruncated = useRef(false);
+  // Basename shared by the session .json and its .webm, fixed at Start.
+  const recordBase = useRef<string | null>(null);
+  const videoMeta = useRef<SessionVideoMeta | null>(null);
+
+  // One screen recorder for the app's lifetime; mirror its state into React.
+  const screenRec = useRef<ScreenRecorder | null>(null);
+  if (!screenRec.current) screenRec.current = new ScreenRecorder();
+  screenRec.current.onChange = () => {
+    setCaptureArmed(screenRec.current!.armed);
+    setVideoRecording(screenRec.current!.recording);
+  };
 
   const pushSample = useCallback((raw: number) => {
     const buf = buffer.current;
@@ -110,23 +143,45 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
     setStatus('off');
   }, []);
 
+  const armCapture = useCallback(async () => { await screenRec.current!.arm(); }, []);
+  const disarmCapture = useCallback(() => { screenRec.current!.disarm(); }, []);
+  const setAutoRecord = useCallback((v: boolean) => {
+    setAutoRecordState(v);
+    try { localStorage.setItem(AUTO_RECORD_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+  }, []);
+
   const startRecording = useCallback(() => {
     recordRaw.current = [];
     recordedRef.current = [];
     recordTruncated.current = false;
     recordStartMs.current = Date.now();
+    recordBase.current = `neurofocus-dota-${new Date(recordStartMs.current).toISOString().replace(/[:.]/g, '-')}`;
     setRecordStartedMs(recordStartMs.current);
     setSampleCount(0);
     setTimeline([]);
     setLastSave(null);
     recordingRef.current = true;
     setRecording(true);
+    // Screen capture rides along when armed — best-effort and async so the EEG
+    // recording starts instantly either way.
+    videoMeta.current = null;
+    const rec = screenRec.current!;
+    if (rec.armed) {
+      void rec.start(`${recordBase.current}.webm`, getRawDataPath() || undefined)
+        .then((v) => {
+          if (v) videoMeta.current = { filename: v.filename, startedAtMs: v.startedAtMs, mimeType: v.mimeType };
+        });
+    }
   }, []);
 
   const stopRecording = useCallback(async () => {
     if (!recordingRef.current) return;
     recordingRef.current = false;
     setRecording(false);
+
+    // Flush the screen recording first so its tail chunk is on disk before the
+    // session JSON that references it.
+    if (screenRec.current!.recording) await screenRec.current!.stop();
 
     const startedAtMs = recordStartMs.current ?? Date.now();
     const endedAtMs = Date.now();
@@ -136,8 +191,10 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
       ? Number((samples.length / durationSec).toFixed(2))
       : null;
 
+    // Key order matters: scalars + video before the big arrays, samples last, so
+    // the listing route can read metadata from just the file head (parseSessionHead).
     const session = {
-      format: 'neurofocus_ble_eeg_v1',
+      format: SESSION_FORMAT_V2,
       app: 'dota2-companion',
       startedAtMs, endedAtMs, durationSec,
       source: mode,
@@ -145,14 +202,16 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
       sampleRateHz,
       truncated: recordTruncated.current,
       matchId: gsi.current?.matchId ?? null,
-      samples,
+      video: videoMeta.current,
       focus: recordedRef.current.map((r) => ({
-        t: r.t, focus: r.focusScore, stress: r.stressScore, state: r.state, tilt: r.tilt, quality: r.quality,
+        t: r.t, tMs: r.tMs, focus: r.focusScore, stress: r.stressScore, state: r.state, tilt: r.tilt, quality: r.quality,
       })),
       events: eventsRef.current,
+      samples,
     };
-    const iso = new Date(startedAtMs).toISOString().replace(/[:.]/g, '-');
-    const filename = `neurofocus-dota-${iso}.json`;
+    const base = recordBase.current
+      ?? `neurofocus-dota-${new Date(startedAtMs).toISOString().replace(/[:.]/g, '-')}`;
+    const filename = `${base}.json`;
 
     try {
       const res = await fetch(RECORDING_URL, {
@@ -185,10 +244,31 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
     const evs = deriveEvents(prev, state);
     prevState.current = state;
     if (evs.length) {
-      eventsRef.current = [...eventsRef.current, ...evs];
+      const now = Date.now();
+      eventsRef.current = [...eventsRef.current, ...evs.map((e) => ({ ...e, tMs: now }))];
       setEvents(eventsRef.current);
     }
   }, [state]);
+
+  // Auto-record: start at the horn, stop & save at game end. Only sessions this
+  // effect started are auto-stopped — a manual recording is never cut short.
+  const autoRecordRef = useRef(autoRecord);
+  autoRecordRef.current = autoRecord;
+  const autoStarted = useRef(false);
+  const prevInProgress = useRef(false);
+  useEffect(() => {
+    if (!state) return;
+    const was = prevInProgress.current;
+    prevInProgress.current = state.inProgress;
+    if (!autoRecordRef.current || mode === 'off') return;
+    if (!was && state.inProgress && !recordingRef.current) {
+      autoStarted.current = true;
+      startRecording();
+    } else if (was && !state.inProgress && autoStarted.current && recordingRef.current) {
+      autoStarted.current = false;
+      void stopRecording();
+    }
+  }, [state, mode, startRecording, stopRecording]);
 
   // The ~1 Hz compute loop — always streams focus while a source is live.
   useEffect(() => {
@@ -219,9 +299,9 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
         quality = 3;
         // Sprinkle synthetic events so "Try demo" shows the event-overlaid timeline.
         if (recordingRef.current) {
-          const add: MatchEvent[] = [];
-          if (p % 23 === 0) add.push({ t: clock, kind: p % 46 === 0 ? 'death' : 'kill' });
-          if (p % 9 === 0) add.push({ t: clock, kind: 'battle', value: 45 });
+          const add: StampedEvent[] = [];
+          if (p % 23 === 0) add.push({ t: clock, kind: p % 46 === 0 ? 'death' : 'kill', tMs: Date.now() });
+          if (p % 9 === 0) add.push({ t: clock, kind: 'battle', value: 45, tMs: Date.now() });
           if (add.length) { eventsRef.current = [...eventsRef.current, ...add]; setEvents(eventsRef.current); }
         }
       } else {
@@ -247,10 +327,11 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
         return next;
       });
 
-      // Only accumulate the recorded timeline while the user is recording.
+      // Only accumulate the recorded timeline while the user is recording. The
+      // wall-clock stamp is what lets the review UI seek video to this moment.
       if (recordingRef.current) {
         const rec = recordedRef.current;
-        rec.push(r);
+        rec.push({ ...r, tMs: Date.now() });
         if (rec.length > MAX_TIMELINE) rec.shift();
         setTimeline(rec.slice());
         setSampleCount(recordRaw.current.length);
@@ -263,5 +344,6 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
     mode, setMode, status, deviceName, connect, disconnect,
     reading, live, timeline, events,
     recording, recordStartedMs, sampleCount, startRecording, stopRecording, lastSave,
+    captureArmed, videoRecording, armCapture, disarmCapture, autoRecord, setAutoRecord,
   };
 }

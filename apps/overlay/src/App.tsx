@@ -18,6 +18,7 @@ import { AiItemPanel } from './components/AiItemPanel';
 import { SkillPanel } from './components/SkillPanel';
 import { AskCoachPanel } from './components/AskCoachPanel';
 import { FocusPanel } from './components/FocusPanel';
+import { ReviewPanel } from './components/ReviewPanel';
 import { LiveFocusStrip } from './components/LiveFocusStrip';
 import { SettingsPanel, SETUP_DONE_KEY } from './components/SettingsPanel';
 
@@ -169,6 +170,10 @@ export default function App() {
 
       <Panel>
         <FocusPanel session={focus} />
+      </Panel>
+
+      <Panel>
+        <ReviewPanel refreshKey={focus.lastSave} />
       </Panel>
 
       <Panel>

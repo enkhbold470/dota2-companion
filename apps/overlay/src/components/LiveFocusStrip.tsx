@@ -41,7 +41,7 @@ function LiveSpark({ live }: { live: FocusReading[] }) {
 export function LiveFocusStrip({ session }: { session: FocusSession }) {
   const {
     mode, reading, live, recording, recordStartedMs, sampleCount,
-    startRecording, stopRecording, lastSave,
+    startRecording, stopRecording, lastSave, videoRecording, captureArmed,
   } = session;
 
   if (mode === 'off') return null;
@@ -88,8 +88,11 @@ export function LiveFocusStrip({ session }: { session: FocusSession }) {
         )}
         {recording && (
           <span style={{ fontSize: t.font.xs, color: t.brand.death }}>
-            REC {mmss(elapsed)}{mode === 'device' ? ` · ${sampleCount.toLocaleString()} samples` : ''}
+            REC {mmss(elapsed)}{videoRecording ? ' · 🎥' : ''}{mode === 'device' ? ` · ${sampleCount.toLocaleString()} samples` : ''}
           </span>
+        )}
+        {!recording && captureArmed && (
+          <span style={{ fontSize: t.font.xs, color: t.color.textFaint }}>🎥 capture armed</span>
         )}
         {!recording && lastSave?.ok && (
           <span style={{ fontSize: t.font.xs, color: t.color.success }} title={lastSave.file}>Saved ✓</span>

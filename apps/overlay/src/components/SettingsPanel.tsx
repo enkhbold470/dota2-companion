@@ -115,8 +115,8 @@ export function SettingsPanel({ open, onClose, session }: SettingsPanelProps) {
           <div style={{ fontSize: t.font.sm, color: t.color.textMuted, lineHeight: t.line.normal }}>
             Streams live focus once connected. To capture the raw signal, hit{' '}
             <strong>● Record</strong> in the focus strip at match start and <strong>Stop &amp; save</strong> when
-            it ends — Dota doesn’t reliably signal those moments, so recording is manual. Opt-in; neural
-            data stays on this machine.
+            it ends — or turn on <strong>Auto-record</strong> below to start/stop with the game.
+            Opt-in; neural data stays on this machine.
           </div>
           <div style={{ display: 'flex', gap: t.space.sm, alignItems: 'center', flexWrap: 'wrap' }}>
             {session.mode === 'off'
@@ -128,12 +128,37 @@ export function SettingsPanel({ open, onClose, session }: SettingsPanelProps) {
           </div>
         </div>
 
+        {/* --- Gameplay video --- */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
+          <SectionLabel tone="ai">Gameplay video (screen recording)</SectionLabel>
+          <div style={{ fontSize: t.font.sm, color: t.color.textMuted, lineHeight: t.line.normal }}>
+            Arm capture once, and every recorded session also saves a .webm of your screen —
+            the review timeline then jumps the video to the moment focus dropped. Stays on this
+            machine, saved next to the session file.
+          </div>
+          <div style={{ display: 'flex', gap: t.space.sm, alignItems: 'center', flexWrap: 'wrap' }}>
+            {session.captureArmed
+              ? <button type="button" onClick={session.disarmCapture} style={btn('ghost')}>Disarm capture</button>
+              : <button type="button" onClick={() => void session.armCapture().catch(() => undefined)} style={btn('primary')}>🎥 Arm screen capture</button>}
+            <span style={{ fontSize: t.font.sm, color: session.captureArmed ? t.color.success : t.color.textFaint }}>
+              {session.captureArmed ? 'armed — recordings include video' : 'not armed'}
+            </span>
+          </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: t.space.sm, fontSize: t.font.sm, color: t.color.textMuted, cursor: 'pointer' }}>
+            <input
+              type="checkbox" checked={session.autoRecord}
+              onChange={(e) => session.setAutoRecord(e.target.checked)}
+            />
+            Auto-record matches (start at the horn, stop &amp; save at game end)
+          </label>
+        </div>
+
         {/* --- Raw-data path (client option) --- */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
           <SectionLabel>Raw EEG data folder</SectionLabel>
           <div style={{ fontSize: t.font.sm, color: t.color.textMuted, lineHeight: t.line.normal }}>
-            Where per-match raw signal (<code>neurofocus_ble_eeg_v1</code>) is saved so you can compute
-            your own features from the local stream.
+            Where per-match raw signal (<code>neurofocus_ble_eeg_v2</code>) and gameplay video are
+            saved so you can compute your own features from the local stream.
           </div>
           <input
             value={rawPath} onChange={(e) => saveRawPath(e.target.value)}

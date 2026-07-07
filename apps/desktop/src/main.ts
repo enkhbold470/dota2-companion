@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, dialog } from 'electron';
+import { app, BrowserWindow, shell, dialog, session, desktopCapturer } from 'electron';
 // electron-updater is CommonJS with NO default export — a default import resolves to
 // undefined. Use the named export (esbuild reads it off the require() result).
 import { autoUpdater } from 'electron-updater';
@@ -140,6 +140,20 @@ async function start(): Promise<void> {
     },
   });
   await server.listen({ host: '127.0.0.1', port: PORT });
+
+  // Screen-capture source picker: the overlay records gameplay via
+  // getDisplayMedia (Settings → "Arm screen capture"). Chromium has no built-in
+  // picker in Electron, so resolve the source here — prefer the Dota 2 window,
+  // else the primary screen — making "arm" a single click with no dialog.
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    desktopCapturer.getSources({ types: ['window', 'screen'] }).then((sources) => {
+      const dota = sources.find((s) => /\bdota 2\b/i.test(s.name));
+      const screen = sources.find((s) => s.id.startsWith('screen:')) ?? sources[0];
+      const pick = dota ?? screen;
+      if (pick) callback({ video: pick });
+      else callback({});                       // nothing to share — deny
+    }).catch(() => callback({}));
+  });
 
   const win = new BrowserWindow({
     width: 460,

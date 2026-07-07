@@ -37,7 +37,7 @@ Dota 2 client ──HTTP POST──▶ apps/listener ──WebSocket──▶ ap
 ```
 
 - **`packages/shared`** — all pure logic. Every module (`normalize`, `timers`, `runes`, `roshan`, `economy`, `threats`, `items`, `skills`, `coach`, `format`, `auth`) is a pure function tree with static data passed in as an argument. The overlay and listener both depend on it; static data lives inside it as pre-pruned JSON. No I/O, no framework imports.
-- **`apps/listener`** — Fastify HTTP server. `POST /` receives raw GSI, authenticates via `auth.token` from the payload against `GSI_TOKEN`, calls `normalizeGsi`, and pushes the `NormalizedState` into `Hub` (a tiny latest-value pub/sub). `GET /ws` is the fan-out WebSocket (sends the latest snapshot on connect, then every update). `POST /coach` proxies to OpenAI, gated by `OPENAI_API_KEY`, with CORS restricted to the overlay origin (`http://127.0.0.1:5273` by default; override with `COACH_ALLOW_ORIGIN`) so a random tab can't spend the key.
+- **`apps/listener`** — Fastify HTTP server. `POST /` receives raw GSI, authenticates via `auth.token` from the payload against `GSI_TOKEN`, calls `normalizeGsi`, and pushes the `NormalizedState` into `Hub` (a tiny latest-value pub/sub). `GET /ws` is the fan-out WebSocket (sends the latest snapshot on connect, then every update). `POST /coach` proxies to OpenAI, gated by `OPENAI_API_KEY`, with CORS restricted to the overlay origin (`http://127.0.0.1:5273` by default; override with `COACH_ALLOW_ORIGIN`) so a random tab can't spend the key. Recording persistence also lives here (the overlay can't write files): `POST /recording` (EEG session JSON), `POST /video/start|chunk|finish` (chunked screen-capture webm), and `GET /recordings` + `GET /recordings/file` (listing via head-parse + Range-capable playback) — all against the local recordings folder.
 - **`apps/overlay`** — React (Vite). `useGsiSocket` maintains a resilient WS to `ws://127.0.0.1:53000/ws` with a 1s reconnect loop. `App.tsx` is the composition root: it derives every panel (timers, economy grade, threat report, item recs, skill readout, coach tips, ask coach) from the incoming `NormalizedState` plus the user-picked enemy heroes and role. Everything below `App.tsx` is a dumb presentational component.
 
 ### The hot loop is deterministic on purpose
@@ -53,6 +53,7 @@ The coaching engines (`threats.ts`, `items.ts`, `skills.ts`, `coach.ts`) are a r
 - `normalizeGsi` filters cosmetic and talent pseudo-abilities via a regex (`special_bonus`, `plus_`, `seasonal_`, `abyssal_underlord_portal_warp`); real ability lists in `NormalizedState.abilities` are already clean.
 - `hasTp` reads only slot `teleport0` — not the backpack or inventory slots.
 - `noUncheckedIndexedAccess: true` is set in `tsconfig.base.json`, so `arr[i]` is `T | undefined`. New code must handle that.
+- Recorded EEG sessions (`neurofocus_ble_eeg_v2`) carry two timebases: `t` is the GSI game clock (seconds, negative pre-horn), `tMs` is wall clock (epoch ms). `packages/shared/src/session.ts` builds the bidirectional map between them — that's how the review UI seeks the screen recording to a focus dip. The session writer keeps scalars + `video` before the big arrays (samples last) so `GET /recordings` can head-parse metadata via `parseSessionHead` without reading megabytes.
 
 ### Posture (non-negotiable)
 

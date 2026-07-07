@@ -8,6 +8,7 @@ import { registerItemRoute } from './item-route';
 import { registerVisionRoute } from './vision-route';
 import { registerSettingsRoute } from './settings-route';
 import { registerRecordingRoute } from './recording-route';
+import { registerVideoRoute } from './video-route';
 import type { Hub } from './hub';
 
 export interface ServerOptions {
@@ -47,10 +48,9 @@ export function buildServer(opts: ServerOptions): FastifyInstance {
     },
     allowOrigin: opts.coachAllowOrigin,
   });
-  registerRecordingRoute(app, {
-    defaultDir: opts.recordingsDir ?? join(process.cwd(), 'nf-recordings'),
-    allowOrigin: opts.coachAllowOrigin,
-  });
+  const recordingsDir = opts.recordingsDir ?? join(process.cwd(), 'nf-recordings');
+  registerRecordingRoute(app, { defaultDir: recordingsDir, allowOrigin: opts.coachAllowOrigin });
+  registerVideoRoute(app, { defaultDir: recordingsDir, allowOrigin: opts.coachAllowOrigin });
 
   app.post('/', async (req, reply) => {
     const raw = req.body;

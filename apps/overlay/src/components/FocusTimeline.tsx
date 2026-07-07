@@ -23,19 +23,34 @@ function fmt(sec: number): string {
 
 interface View { pxPerSec: number; viewStart: number; }
 
+export interface FocusTimelineProps {
+  timeline: FocusReading[];
+  events: MatchEvent[];
+  /** Click (not drag) handler — receives the game-clock second under the cursor. */
+  onSeek?: (t: number) => void;
+  /** Playhead position (game-clock seconds), e.g. synced to a review video. */
+  cursorT?: number | null;
+}
+
 /**
  * A video-editor-style timeline: focus + stress lines with colored game-event
  * markers, wheel-to-zoom (around the cursor), drag-to-pan, and a hover readout —
  * so you can scrub to the exact moment focus dropped after a death or a fight.
+ * With `onSeek`/`cursorT` it doubles as the scrubber for the review video.
  */
-export function FocusTimeline({ timeline, events }: { timeline: FocusReading[]; events: MatchEvent[] }) {
+export function FocusTimeline({ timeline, events, onSeek, cursorT }: FocusTimelineProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [width, setWidth] = useState(0);
   const [view, setView] = useState<View>({ pxPerSec: 1, viewStart: 0 });
   const [hoverX, setHoverX] = useState<number | null>(null);
   const interacted = useRef(false);
-  const drag = useRef<{ x: number; viewStart: number } | null>(null);
+  const drag = useRef<{ x: number; viewStart: number; moved: boolean } | null>(null);
+  // Refs so the window-level mouseup sees the live view/handler, not a stale closure.
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  const onSeekRef = useRef(onSeek);
+  onSeekRef.current = onSeek;
 
   const plotW = Math.max(1, width - PAD.l - PAD.r);
   const tMin = timeline.length ? timeline[0]!.t : 0;
@@ -100,15 +115,29 @@ export function FocusTimeline({ timeline, events }: { timeline: FocusReading[]; 
     return () => el.removeEventListener('wheel', onWheel);
   }, [zoomAt]);
 
-  // Drag to pan.
+  // Drag to pan; a press that never moves more than a few px is a click → seek.
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (!drag.current) return;
-      const dx = e.clientX - drag.current.x;
+      const d = drag.current;
+      if (!d) return;
+      const dx = e.clientX - d.x;
+      if (!d.moved && Math.abs(dx) <= 4) return;
+      d.moved = true;
       interacted.current = true;
-      setView((v) => clamp({ ...v, viewStart: drag.current!.viewStart - dx / v.pxPerSec }));
+      setView((v) => clamp({ ...v, viewStart: d.viewStart - dx / v.pxPerSec }));
     };
-    const onUp = () => { drag.current = null; };
+    const onUp = (e: MouseEvent) => {
+      const d = drag.current;
+      drag.current = null;
+      if (!d || d.moved) return;
+      const el = canvasRef.current;
+      const seek = onSeekRef.current;
+      if (!el || !seek) return;
+      const rect = el.getBoundingClientRect();
+      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
+      const v = viewRef.current;
+      seek(v.viewStart + (e.clientX - rect.left - PAD.l) / v.pxPerSec);
+    };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
@@ -188,6 +217,20 @@ export function FocusTimeline({ timeline, events }: { timeline: FocusReading[]; 
     line((r) => r.stressScore, t.brand.stress, 1.25, false);
     line((r) => r.focusScore, t.brand.focus, 2, true);
 
+    // Playhead (review video position).
+    if (cursorT != null && cursorT >= viewStart && cursorT <= viewEnd) {
+      const px = x(cursorT);
+      ctx.strokeStyle = t.brand.ink;
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.moveTo(px, PAD.top - 8); ctx.lineTo(px, H - PAD.bottom); ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = t.brand.ink;
+      ctx.beginPath();
+      ctx.moveTo(px - 4, PAD.top - 12); ctx.lineTo(px + 4, PAD.top - 12); ctx.lineTo(px, PAD.top - 4);
+      ctx.closePath(); ctx.fill();
+    }
+
     // Hover crosshair + readout.
     if (hoverX != null && drag.current == null) {
       const tt = viewStart + (hoverX - PAD.l) / pxPerSec;
@@ -211,7 +254,7 @@ export function FocusTimeline({ timeline, events }: { timeline: FocusReading[]; 
         lines.forEach((l, i) => ctx.fillText(l, bx + 5, PAD.top + 13 + i * 13));
       }
     }
-  }, [timeline, events, view, width, hoverX, plotW]);
+  }, [timeline, events, view, width, hoverX, plotW, cursorT]);
 
   const zoomedIn = view.pxPerSec > plotW / span * 1.02;
 
@@ -221,7 +264,7 @@ export function FocusTimeline({ timeline, events }: { timeline: FocusReading[]; 
         <canvas
           ref={canvasRef}
           style={{ display: 'block', width: '100%', height: H, cursor: drag.current ? 'grabbing' : 'grab' }}
-          onMouseDown={(e) => { drag.current = { x: e.clientX, viewStart: view.viewStart }; setHoverX(null); }}
+          onMouseDown={(e) => { drag.current = { x: e.clientX, viewStart: view.viewStart, moved: false }; setHoverX(null); }}
           onMouseMove={(e) => { if (!drag.current) setHoverX(e.clientX - e.currentTarget.getBoundingClientRect().left); }}
           onMouseLeave={() => setHoverX(null)}
         />
@@ -230,7 +273,9 @@ export function FocusTimeline({ timeline, events }: { timeline: FocusReading[]; 
         <button type="button" onClick={() => zoomAt((canvasRef.current?.getBoundingClientRect().left ?? 0) + width / 2, 1 / 1.4)} style={btn('ghost')} aria-label="Zoom out">−</button>
         <button type="button" onClick={() => zoomAt((canvasRef.current?.getBoundingClientRect().left ?? 0) + width / 2, 1.4)} style={btn('ghost')} aria-label="Zoom in">+</button>
         <button type="button" onClick={fit} style={btn('ghost')} disabled={!zoomedIn}>Fit</button>
-        <span style={{ fontSize: t.font.xs, color: t.color.textFaint, marginLeft: 'auto' }}>scroll = zoom · drag = pan</span>
+        <span style={{ fontSize: t.font.xs, color: t.color.textFaint, marginLeft: 'auto' }}>
+          scroll = zoom · drag = pan{onSeek ? ' · click = seek video' : ''}
+        </span>
       </div>
       <TimelineLegend events={events} />
     </div>
