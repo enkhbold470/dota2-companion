@@ -10,7 +10,7 @@ const STATE_LABEL: Record<string, string> = {
 };
 
 export function FocusPanel({ session }: { session: FocusSession }) {
-  const { mode, status, deviceName, connect, disconnect, setMode, reading, live, timeline, events, recording } = session;
+  const { mode, status, deviceName, connect, disconnect, setMode, reading, live, timeline, events, recording, samplesPerSec } = session;
 
   // Chart the deliberate recording once it exists; until then show the live rolling
   // window so the panel is never blank while a headset streams.
@@ -52,6 +52,15 @@ export function FocusPanel({ session }: { session: FocusSession }) {
 
       {status === 'connecting' && <div style={{ color: t.color.accentText, fontSize: t.font.base }}>Connecting to headset…</div>}
       {status === 'error' && <div style={{ color: t.brand.death, fontSize: t.font.base }}>Couldn’t connect — is the headset on &amp; in range?</div>}
+
+      {/* Live BLE throughput — the fast way to tell "connected but not streaming". */}
+      {mode === 'device' && (status === 'streaming' || samplesPerSec > 0) && (
+        <div style={{ fontSize: t.font.sm, color: samplesPerSec > 0 ? t.color.success : t.brand.death }}>
+          {samplesPerSec > 0
+            ? `● streaming — ${samplesPerSec} samples/s`
+            : '○ connected but no data — power-cycle the headset, or reconnect'}
+        </div>
+      )}
 
       {/* Hero number */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: t.space.md }}>

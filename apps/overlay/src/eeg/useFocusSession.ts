@@ -35,6 +35,8 @@ export interface FocusSession {
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   reading: FocusReading | null;
+  /** Raw EEG samples received in the last second (~175 when streaming, 0 if silent). */
+  samplesPerSec: number;
   /** Rolling recent readings for the always-on live strip (updates every second). */
   live: FocusReading[];
   /** Readings captured between Start and Stop recording (the deliberate session). */
@@ -80,6 +82,7 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
   const [recording, setRecording] = useState(false);
   const [recordStartedMs, setRecordStartedMs] = useState<number | null>(null);
   const [sampleCount, setSampleCount] = useState(0);
+  const [samplesPerSec, setSamplesPerSec] = useState(0);
   const [lastSave, setLastSave] = useState<SaveResult | null>(null);
   const [captureArmed, setCaptureArmed] = useState(false);
   const [videoRecording, setVideoRecording] = useState(false);
@@ -280,6 +283,13 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
     if (mode === 'demo') setStatus('demo');
 
     const id = setInterval(() => {
+      // Live BLE throughput: raw samples received since the last tick. Reported
+      // even when the buffer is too small to analyze, so the UI can show whether
+      // the headset is streaming (~175/s) or silent (0/s) — separate from quality.
+      const received = sinceTick.current;
+      sinceTick.current = 0;
+      if (mode === 'device') setSamplesPerSec(received);
+
       const s = gsi.current;
       const clock = s?.clock ?? Math.floor(performance.now() / 1000);
       const recentDeaths = eventsRef.current.filter((e) => e.kind === 'death' && clock - e.t <= 60).length;
@@ -311,7 +321,6 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
       } else {
         const buf = buffer.current;
         if (buf.length < 64) return;               // not enough signal yet
-        sinceTick.current = 0;
         // fs is FIXED at 175 SPS (ADS1220 DR_LVL_3, verified against firmware).
         // Do NOT measure the rate off arrival timing — BLE jitter would wobble the
         // frequency axis and silently corrupt every band. See @dc/shared EEG_FS.
@@ -345,7 +354,7 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
 
   return {
     mode, setMode, status, deviceName, connect, disconnect,
-    reading, live, timeline, events,
+    reading, samplesPerSec, live, timeline, events,
     recording, recordStartedMs, sampleCount, startRecording, stopRecording, lastSave,
     captureArmed, videoRecording, armCapture, disarmCapture, grabFrame, autoRecord, setAutoRecord,
   };

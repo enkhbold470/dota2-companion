@@ -32,10 +32,12 @@ extraResources:
 win:
   target:
     - nsis
-  # NSIS/file metadata publisher. NOTE: this does NOT remove the SmartScreen
-  # "Unknown publisher" warning — only an Authenticode code-signing certificate
-  # (e.g. Azure Trusted Signing) does that.
-  publisherName: NeuroFocus
+  # NOTE: do NOT set publisherName here. On Windows electron-updater verifies the
+  # downloaded update is Authenticode-signed by that publisher; since we ship
+  # UNSIGNED, setting it makes every auto-update fail with "New version is not
+  # signed by the application owner: publisherNames: NeuroFocus". With it unset,
+  # electron-updater skips signature verification for the unsigned build and
+  # updates install. (It never helped SmartScreen anyway — only real signing does.)
 
 # Branded assisted installer: NeuroFocus sidebar art + license/privacy/terms
 # page (build/license.txt). Icons come from build/icon.png (auto-converted).
