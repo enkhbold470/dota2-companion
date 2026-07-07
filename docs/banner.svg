@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="240" viewBox="0 0 1200 240" role="img" aria-label="NeuroFocus — Dota 2 NeuroSync">
+  <defs>
+    <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f1b27a" stop-opacity="0"/>
+      <stop offset="0.12" stop-color="#f1b27a" stop-opacity="1"/>
+      <stop offset="0.88" stop-color="#f1b27a" stop-opacity="1"/>
+      <stop offset="1" stop-color="#f1b27a" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-200%" width="160%" height="500%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="panel"><rect width="1200" height="240" rx="14"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#panel)">
+    <rect width="1200" height="240" fill="#0a0a0c"/>
+    <rect width="1200" height="240" fill="none" stroke="#26222e" stroke-width="2" rx="14"/>
+
+    <!-- recessive scanline grid -->
+    <g stroke="#17141d" stroke-width="1">
+      <line x1="0" y1="60"  x2="1200" y2="60"/>
+      <line x1="0" y1="120" x2="1200" y2="120"/>
+      <line x1="0" y1="180" x2="1200" y2="180"/>
+    </g>
+
+    <!-- FlowState trace: one continuous EEG-style waveform, phosphor glow, slow drift -->
+    <g filter="url(#glow)">
+      <path fill="none" stroke="url(#fade)" stroke-width="2" stroke-linecap="round"
+        d="M0,150 L60,148 90,152 130,146 170,151 210,143 240,150 270,147 300,152 330,144
+           360,149 390,140 410,155 430,118 442,176 454,96 466,168 478,124 490,150 520,146
+           550,151 580,143 610,149 640,145 670,151 700,142 720,154 740,112 752,182 764,90
+           776,172 788,120 800,148 830,150 860,144 890,151 920,146 950,150 980,143 1010,150
+           1040,146 1070,151 1100,147 1140,150 1200,148">
+        <animate attributeName="stroke-opacity" values="0.85;1;0.85" dur="4s" repeatCount="indefinite"/>
+      </path>
+    </g>
+
+    <!-- burst markers under the two spikes -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#6f6a78" text-anchor="middle">
+      <text x="454" y="212">teamfight</text>
+      <text x="764" y="212">teamfight</text>
+    </g>
+
+    <!-- wordmark -->
+    <g font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+      <text x="600" y="84" text-anchor="middle" font-size="42" font-weight="700" letter-spacing="1" fill="#fbfbfb">NeuroFocus</text>
+      <text x="600" y="112" text-anchor="middle" font-size="15" font-weight="600" letter-spacing="6" fill="#f1b27a">DOTA 2 NEUROSYNC</text>
+    </g>
+
+    <!-- REC dot, breathing -->
+    <g>
+      <circle cx="1146" cy="34" r="5" fill="#d94f56">
+        <animate attributeName="fill-opacity" values="1;0.25;1" dur="2.4s" repeatCount="indefinite"/>
+      </circle>
+      <text x="1136" y="38" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#6f6a78">REC</text>
+    </g>
+    <text x="54" y="38" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#6f6a78">175 SPS · CH1</text>
+  </g>
+</svg>
