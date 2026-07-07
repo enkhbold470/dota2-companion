@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { matchHeroNames, heroIconUrl, type HeroDataMap } from '@dc/shared';
 import { t, btn, SectionLabel } from '../theme';
 import { VISION_URL } from '../config';
+import { toUploadDataUrl } from '../video/frame';
 
 export interface HeroAnalyzerProps {
   heroData: HeroDataMap;
@@ -16,35 +17,6 @@ const UNAVAILABLE = 'Analyzer unavailable — is the listener running?';
 const UPSTREAM = 'Vision error — check the OpenAI key/quota on the listener.';
 const TOO_BIG = 'Image too large — crop to just the heroes and retry.';
 const MAX_BYTES = 6_000_000;
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-    reader.onerror = () => reject(new Error('read failed'));
-    reader.readAsDataURL(blob);
-  });
-}
-
-// Shrink to a sane width + JPEG so the POST stays small and vision is fast.
-// Falls back to the raw data URL where canvas/createImageBitmap aren't available.
-async function toUploadDataUrl(blob: Blob): Promise<string> {
-  const raw = await blobToDataUrl(blob);
-  try {
-    if (typeof createImageBitmap !== 'function') return raw;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return raw;
-    const bitmap = await createImageBitmap(blob);
-    const scale = Math.min(1, 1280 / bitmap.width);
-    canvas.width = Math.round(bitmap.width * scale);
-    canvas.height = Math.round(bitmap.height * scale);
-    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL('image/jpeg', 0.82);
-  } catch {
-    return raw;
-  }
-}
 
 export function HeroAnalyzer({
   heroData, onHeroesDetected, ownHeroId = null, ownHeroName = null,

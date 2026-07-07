@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   dayNight, runeTimers, roshanTimer, gradeEconomy, type Role,
   HERO_DATA, ABILITY_DATA, ITEM_DATA, heroById,
@@ -6,6 +6,7 @@ import {
 } from '@dc/shared';
 import { useGsiSocket } from './useGsiSocket';
 import { useFocusSession } from './eeg/useFocusSession';
+import { useAutoDraft } from './eeg/useAutoDraft';
 import { t, Panel, SectionLabel } from './theme';
 import { Logo } from './components/Logo';
 import { ConnectionBadge } from './components/ConnectionBadge';
@@ -13,6 +14,7 @@ import { TimerPanel } from './components/TimerPanel';
 import { EconomyPanel } from './components/EconomyPanel';
 import { EnemyPicker, type HeroOption } from './components/EnemyPicker';
 import { HeroAnalyzer } from './components/HeroAnalyzer';
+import { AutoDraftBanner } from './components/AutoDraftBanner';
 import { CoachPanel } from './components/CoachPanel';
 import { AiItemPanel } from './components/AiItemPanel';
 import { SkillPanel } from './components/SkillPanel';
@@ -33,6 +35,26 @@ export default function App() {
   const [roshKilledAt, setRoshKilledAt] = useState<number | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const focus = useFocusSession(state);
+
+  // Enemies the user hand-picked (picker/paste) must never be auto-overwritten
+  // for the current match. Reset when the match id changes.
+  const enemiesManual = useRef(false);
+  const lastMatch = useRef<string | null>(null);
+  if (state && state.matchId !== lastMatch.current) {
+    lastMatch.current = state.matchId;
+    enemiesManual.current = false;
+  }
+
+  // Auto draft detection: enemies + allies from one screen frame at draft time.
+  const auto = useAutoDraft(state, {
+    captureArmed: focus.captureArmed,
+    armCapture: focus.armCapture,
+    grabFrame: focus.grabFrame,
+    onEnemies: (ids) => setEnemies(ids),
+    enemiesManual: enemiesManual.current,
+    heroData: HERO_DATA,
+  });
+  const allies = auto.allies;
 
   // First-run: open setup once so a new user can drop in their OpenAI key.
   useEffect(() => {
@@ -63,8 +85,10 @@ export default function App() {
   const nextSkill = useMemo(() => suggestNextSkill(skills, heroLevel), [skills, heroLevel]);
   const tips = useMemo(() => (state ? coachTips({ state, role, threat }) : []), [state, role, threat]);
 
-  const toggleEnemy = (id: number) =>
+  const toggleEnemy = (id: number) => {
+    enemiesManual.current = true; // user override — stop auto-detect clobbering this match
     setEnemies((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : prev.length < 5 ? [...prev, id] : prev);
+  };
 
   // Auto-refresh the AI build only when the draft/hero/role changes, not per gold tick.
   const itemSignature = `${heroId ?? 'none'}|${role}|${[...enemies].sort((a, b) => a - b).join(',')}`;
@@ -159,11 +183,12 @@ export default function App() {
       )}
 
       <Panel style={{ display: 'flex', flexDirection: 'column', gap: t.space.md }}>
+        <AutoDraftBanner auto={auto} allies={allies} heroData={HERO_DATA} />
         <HeroAnalyzer
           heroData={HERO_DATA}
           ownHeroId={heroId}
           ownHeroName={heroById(heroId)?.localizedName ?? null}
-          onHeroesDetected={(ids) => setEnemies(ids.slice(0, 5))}
+          onHeroesDetected={(ids) => { enemiesManual.current = true; setEnemies(ids.slice(0, 5)); }}
         />
         <EnemyPicker heroes={HERO_OPTIONS} selected={enemies} onToggle={toggleEnemy} />
       </Panel>

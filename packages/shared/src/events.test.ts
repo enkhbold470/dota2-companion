@@ -5,7 +5,7 @@ import type { NormalizedState } from './types';
 function state(over: Partial<NormalizedState> & { clock?: number } = {}): NormalizedState {
   const { clock, ...rest } = over;
   return {
-    matchId: 'm1', inProgress: true, paused: false, clock: clock ?? 100, isDay: true,
+    matchId: 'm1', inProgress: true, gameState: 'DOTA_GAMERULES_STATE_GAME_IN_PROGRESS', phase: 'in_progress', team: 'radiant', paused: false, clock: clock ?? 100, isDay: true,
     hero: { id: 1, level: 5, alive: true, respawnSeconds: 0, hpPercent: 100, mpPercent: 100, hasScepter: false, hasShard: false },
     economy: { gold: 0, netWorth: 0, gpm: 0, xpm: 0, lastHits: 0 },
     combat: { kills: 0, deaths: 0, assists: 0 },

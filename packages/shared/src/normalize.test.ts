@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeGsi } from './normalize';
+import { normalizeGsi, gamePhase } from './normalize';
 import type { GsiPayload } from './types';
 
 const full: GsiPayload = {
@@ -37,6 +37,30 @@ describe('normalizeGsi', () => {
     expect(s.hero.hasScepter).toBe(false);
     expect(s.economy.gpm).toBe(540);
     expect(s.economy.netWorth).toBe(5200);
+  });
+
+  it('surfaces game_state, derived phase, and team', () => {
+    const s = normalizeGsi({
+      map: { game_state: 'DOTA_GAMERULES_STATE_STRATEGY_TIME' },
+      player: { team_name: 'dire' },
+    });
+    expect(s.gameState).toBe('DOTA_GAMERULES_STATE_STRATEGY_TIME');
+    expect(s.phase).toBe('strategy');
+    expect(s.team).toBe('dire');
+    // in_progress fixture:
+    expect(normalizeGsi(full).phase).toBe('in_progress');
+    expect(normalizeGsi(full).team).toBeNull(); // no team_name in `full`
+  });
+
+  it('gamePhase maps the DOTA_GAMERULES_STATE_* enum, unknown → unknown', () => {
+    expect(gamePhase('DOTA_GAMERULES_STATE_HERO_SELECTION')).toBe('hero_selection');
+    expect(gamePhase('DOTA_GAMERULES_STATE_STRATEGY_TIME')).toBe('strategy');
+    expect(gamePhase('DOTA_GAMERULES_STATE_PRE_GAME')).toBe('pre_game');
+    expect(gamePhase('DOTA_GAMERULES_STATE_GAME_IN_PROGRESS')).toBe('in_progress');
+    expect(gamePhase('DOTA_GAMERULES_STATE_POST_GAME')).toBe('post_game');
+    expect(gamePhase('DOTA_GAMERULES_STATE_WAIT_FOR_MAP_TO_LOAD')).toBe('loading');
+    expect(gamePhase(undefined)).toBe('unknown');
+    expect(gamePhase('something_else')).toBe('unknown');
   });
 
   it('collects only non-empty item slots (ignores neutral/stash keys)', () => {

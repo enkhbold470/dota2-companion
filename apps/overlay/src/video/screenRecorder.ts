@@ -1,4 +1,5 @@
 import { VIDEO_START_URL, VIDEO_CHUNK_URL, VIDEO_FINISH_URL } from '../config';
+import { streamToDataUrl } from './frame';
 
 /**
  * Screen capture for the focus review: records gameplay while an EEG session
@@ -37,6 +38,15 @@ export class ScreenRecorder {
 
   get armed(): boolean { return this.stream !== null; }
   get recording(): boolean { return this.recorder !== null; }
+
+  /**
+   * Grab one still JPEG data-URL from the armed capture (for the auto draft scan).
+   * Returns null when not armed — capture must be armed via a user gesture first.
+   */
+  async grabFrame(): Promise<string | null> {
+    if (!this.stream) return null;
+    return streamToDataUrl(this.stream);
+  }
 
   async arm(): Promise<void> {
     if (this.stream) return;

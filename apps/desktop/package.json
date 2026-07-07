@@ -1,6 +1,6 @@
 {
   "name": "@dc/desktop",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "private": true,
   "description": "Dota 2 Companion desktop app (Electron)",
   "author": "NeuroFocus <hello@neurofocus.dev> (https://neurofocus.dev)",

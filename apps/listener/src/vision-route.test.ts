@@ -60,4 +60,28 @@ describe('vision route', () => {
     expect(res.statusCode).toBe(502);
     await app.close();
   });
+
+  it('draft mode returns heroes split by side and uses the draft prompt', async () => {
+    const draftResponse = new Response(
+      JSON.stringify({ choices: [{ message: { content: JSON.stringify({
+        radiant: ['Lion', 'Sven'], dire: ['Anti-Mage', 'Tiny', ''],
+      }) } }] }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    );
+    const fetchMock = vi.fn((_i: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(draftResponse));
+    const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
+    const res = await app.inject({ method: 'POST', url: '/vision', payload: { image: TINY_PNG, mode: 'draft' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ radiant: ['Lion', 'Sven'], dire: ['Anti-Mage', 'Tiny'] });
+
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages?: { content: unknown }[] };
+    expect(String(sent.messages?.[0]?.content)).toContain('split by team');
+    await app.close();
+  });
+
+  it('draft mode still rejects a bad image and honors no-key', async () => {
+    const noKey = buildApp({ apiKey: null });
+    expect((await noKey.inject({ method: 'POST', url: '/vision', payload: { image: TINY_PNG, mode: 'draft' } })).statusCode).toBe(501);
+    await noKey.close();
+  });
 });

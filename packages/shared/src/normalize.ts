@@ -1,8 +1,42 @@
-import type { GsiPayload, NormalizedState } from './types';
+import type { GsiPayload, NormalizedState, GamePhase, Team } from './types';
 import { GAME_IN_PROGRESS, EMPTY_ITEM } from './types';
 
 const numOrNull = (v: number | undefined): number | null =>
   typeof v === 'number' ? v : null;
+
+/**
+ * Map the raw GSI game_state string to a coarse phase. The strings are the
+ * DOTA_GAMERULES_STATE_* enum names; anything we don't recognize is 'unknown'.
+ * 'strategy'/'pre_game' are when the top hero bar is populated but the match
+ * hasn't started — the moment to auto-scan the draft.
+ */
+export function gamePhase(gameState: string | null | undefined): GamePhase {
+  switch (gameState) {
+    case 'DOTA_GAMERULES_STATE_INIT':
+    case 'DOTA_GAMERULES_STATE_WAIT_FOR_PLAYERS_TO_LOAD':
+    case 'DOTA_GAMERULES_STATE_WAIT_FOR_MAP_TO_LOAD':
+      return 'loading';
+    case 'DOTA_GAMERULES_STATE_HERO_SELECTION':
+      return 'hero_selection';
+    case 'DOTA_GAMERULES_STATE_STRATEGY_TIME':
+    case 'DOTA_GAMERULES_STATE_TEAM_SHOWCASE':
+      return 'strategy';
+    case 'DOTA_GAMERULES_STATE_PRE_GAME':
+      return 'pre_game';
+    case GAME_IN_PROGRESS:
+      return 'in_progress';
+    case 'DOTA_GAMERULES_STATE_POST_GAME':
+    case 'DOTA_GAMERULES_STATE_DISCONNECT':
+      return 'post_game';
+    default:
+      return 'unknown';
+  }
+}
+
+function normalizeTeam(name: string | undefined): Team | null {
+  const t = name?.toLowerCase();
+  return t === 'radiant' || t === 'dire' ? t : null;
+}
 
 // Cosmetic / talent pseudo-abilities that GSI reports alongside real skills.
 const NON_SKILL_ABILITY = /^(special_bonus|plus_|seasonal_|abyssal_underlord_portal_warp$)/;
@@ -38,6 +72,9 @@ export function normalizeGsi(payload: GsiPayload): NormalizedState {
   return {
     matchId: map.matchid ?? null,
     inProgress: map.game_state === GAME_IN_PROGRESS,
+    gameState: map.game_state ?? null,
+    phase: gamePhase(map.game_state),
+    team: normalizeTeam(player.team_name),
     paused: map.paused === true,
     clock: numOrNull(map.clock_time),
     isDay: typeof map.daytime === 'boolean' ? map.daytime : null,

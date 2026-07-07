@@ -14,6 +14,7 @@ export interface GsiMap {
 export interface GsiPlayer {
   steamid?: string;
   name?: string;
+  team_name?: string;         // "radiant" | "dire" — our side while playing
   gold?: number;
   net_worth?: number;
   gpm?: number;
@@ -70,9 +71,27 @@ export interface NormalizedAbility {
   ultimate: boolean;
 }
 
+/** Coarse match phase derived from the raw GSI game_state string. */
+export type GamePhase =
+  | 'loading'         // init / waiting for players / map load
+  | 'hero_selection'  // drafting
+  | 'strategy'        // picks locked, strategy time — top hero bar is populated
+  | 'pre_game'        // horn countdown
+  | 'in_progress'     // GAME_IN_PROGRESS
+  | 'post_game'       // match over
+  | 'unknown';        // no/unrecognized game_state
+
+export type Team = 'radiant' | 'dire';
+
 export interface NormalizedState {
   matchId: string | null;
   inProgress: boolean;
+  /** Raw GSI game_state, e.g. "DOTA_GAMERULES_STATE_STRATEGY_TIME" (null pre-connect). */
+  gameState: string | null;
+  /** Coarse phase derived from gameState — times the auto draft scan. */
+  phase: GamePhase;
+  /** Our side, from player.team_name — which drafted team is "us". */
+  team: Team | null;
   paused: boolean;
   clock: number | null;
   isDay: boolean | null;

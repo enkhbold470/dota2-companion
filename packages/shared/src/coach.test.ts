@@ -13,6 +13,9 @@ function makeState(patch: StatePatch = {}): NormalizedState {
   return {
     matchId: 'm1',
     inProgress: true,
+    gameState: 'DOTA_GAMERULES_STATE_GAME_IN_PROGRESS',
+    phase: 'in_progress',
+    team: 'radiant',
     paused: false,
     clock: 600,
     isDay: true,
