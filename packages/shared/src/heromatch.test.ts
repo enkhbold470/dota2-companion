@@ -23,6 +23,30 @@ describe('matchHeroNames', () => {
     const many = ['Sven', 'Axe', 'Lion', 'Lina', 'Zeus', 'Tiny'];
     expect(matchHeroNames(many, HERO_DATA, 5)).toHaveLength(5);
   });
+
+  it('resolves the current in-game rename "Outworld Destroyer" to the stored Outworld Devourer', () => {
+    expect(matchHeroNames(['Outworld Destroyer'], HERO_DATA)).toEqual([idOf('Outworld Devourer')]);
+    expect(matchHeroNames(['OD'], HERO_DATA)).toEqual([idOf('Outworld Devourer')]);
+  });
+
+  it('resolves legacy/community names via internal npc names and aliases', () => {
+    expect(matchHeroNames(['Windrunner'], HERO_DATA)).toEqual([idOf('Windranger')]);
+    expect(matchHeroNames(['Furion'], HERO_DATA)).toEqual([idOf("Nature's Prophet")]);
+    expect(matchHeroNames(['Necrolyte'], HERO_DATA)).toEqual([idOf('Necrophos')]);
+    expect(matchHeroNames(['Wisp'], HERO_DATA)).toEqual([idOf('Io')]);
+    expect(matchHeroNames(['Skeleton King'], HERO_DATA)).toEqual([idOf('Wraith King')]);
+    expect(matchHeroNames(['Nevermore'], HERO_DATA)).toEqual([idOf('Shadow Fiend')]);
+  });
+
+  it('rescues near-miss spellings with the fuzzy pass', () => {
+    expect(matchHeroNames(['Jugernaut'], HERO_DATA)).toEqual([idOf('Juggernaut')]);
+    expect(matchHeroNames(['Crystal Maden'], HERO_DATA)).toEqual([idOf('Crystal Maiden')]);
+    expect(matchHeroNames(['Templar Asassin'], HERO_DATA)).toEqual([idOf('Templar Assassin')]);
+  });
+
+  it('never guesses on garbage or ambiguous input', () => {
+    expect(matchHeroNames(['Notahero', 'xyz', ''], HERO_DATA)).toEqual([]);
+  });
 });
 
 describe('splitDraftByTeam', () => {

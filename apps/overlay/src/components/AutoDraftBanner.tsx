@@ -1,4 +1,4 @@
-import { heroIconUrl, type HeroDataMap } from '@dc/shared';
+import { heroIconUrl, type HeroDataMap, type Team } from '@dc/shared';
 import { t, btn, SectionLabel } from '../theme';
 import type { AutoDraftResult } from '../eeg/useAutoDraft';
 
@@ -7,18 +7,29 @@ import type { AutoDraftResult } from '../eeg/useAutoDraft';
  * engines as before; allies are shown here for context. When capture isn't armed
  * at draft, offers a one-click "Enable auto-detect" that arms + scans.
  */
-export function AutoDraftBanner({ auto, allies, heroData }: {
+export function AutoDraftBanner({ auto, allies, heroData, team }: {
   auto: AutoDraftResult;
   allies: number[];
   heroData: HeroDataMap;
+  team: Team | null;
 }) {
   const { status } = auto;
+  const teamColor = team === 'radiant' ? t.color.success : t.color.danger;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: t.space.sm }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: t.space.sm, flexWrap: 'wrap' }}>
         <SectionLabel tone="ai">Auto draft</SectionLabel>
+        {team !== null && (
+          <span style={{
+            fontSize: t.font.xs, fontWeight: t.weight.semibold, color: teamColor,
+            textTransform: 'uppercase', letterSpacing: 0.5,
+          }}>
+            {team}
+          </span>
+        )}
         {status === 'scanning' && <span style={{ fontSize: t.font.xs, color: t.color.accentText }}>reading the draft…</span>}
+        {status === 'retrying' && <span style={{ fontSize: t.font.xs, color: t.color.accentText }}>partial read — retrying…</span>}
         {status === 'done' && <span style={{ fontSize: t.font.xs, color: t.color.success }}>detected ✓</span>}
         {status === 'no-key' && <span style={{ fontSize: t.font.xs, color: t.color.textFaint }}>needs an OpenAI key — pick manually below</span>}
         {status === 'failed' && (

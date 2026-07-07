@@ -10,7 +10,7 @@ function buildApp(opts: ItemRouteOptions): FastifyInstance {
 
 function okItems(items: unknown): Response {
   return new Response(
-    JSON.stringify({ choices: [{ message: { content: JSON.stringify({ items }) } }] }),
+    JSON.stringify({ output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ items }) }] }] }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   );
 }
@@ -43,9 +43,12 @@ describe('item-build route', () => {
     ] });
 
     const init = fetchMock.mock.calls[0]?.[1];
-    const sent = JSON.parse(String(init?.body)) as { response_format?: { type?: string }; model?: string };
-    expect(sent.response_format?.type).toBe('json_object');
-    expect(sent.model).toBe('gpt-4o');
+    const sent = JSON.parse(String(init?.body)) as {
+      text?: { format?: { type?: string } }; model?: string; reasoning?: { effort?: string };
+    };
+    expect(sent.text?.format?.type).toBe('json_object');
+    expect(sent.model).toBe('gpt-5.4');
+    expect(sent.reasoning?.effort).toBe('low');
     await app.close();
   });
 
@@ -59,8 +62,8 @@ describe('item-build route', () => {
     });
     expect(res.statusCode).toBe(200);
     const init = fetchMock.mock.calls[0]?.[1];
-    const sent = JSON.parse(String(init?.body)) as { messages: { role: string; content: string }[] };
-    expect(sent.messages[0]?.content).toContain('BUILD STYLE = FUN');
+    const sent = JSON.parse(String(init?.body)) as { instructions: string };
+    expect(sent.instructions).toContain('BUILD STYLE = FUN');
     await app.close();
   });
 
@@ -69,8 +72,8 @@ describe('item-build route', () => {
       Promise.resolve(okItems([{ name: 'Black King Bar', reason: 'safe' }])));
     const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
     await app.inject({ method: 'POST', url: '/item-build', payload: { context: {} } });
-    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: { content: string }[] };
-    expect(sent.messages[0]?.content).toContain('BUILD STYLE = META');
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { instructions: string };
+    expect(sent.instructions).toContain('BUILD STYLE = META');
     await app.close();
   });
 

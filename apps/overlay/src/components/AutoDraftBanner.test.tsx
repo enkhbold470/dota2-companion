@@ -13,20 +13,21 @@ const svenId = Number(Object.entries(HERO_DATA).find(([, h]) => h.localizedName 
 
 it('offers a one-click enable when capture is not armed', async () => {
   const armAndScan = vi.fn();
-  render(<AutoDraftBanner auto={base({ status: 'need-arm', armAndScan })} allies={[]} heroData={HERO_DATA} />);
+  render(<AutoDraftBanner auto={base({ status: 'need-arm', armAndScan })} allies={[]} heroData={HERO_DATA} team={null} />);
   const btn = screen.getByText('🎥 Enable auto-detect');
   await userEvent.click(btn);
   expect(armAndScan).toHaveBeenCalled();
 });
 
 it('shows a detected badge and the ally row when done', () => {
-  render(<AutoDraftBanner auto={base({ status: 'done', allies: [svenId] })} allies={[svenId]} heroData={HERO_DATA} />);
+  render(<AutoDraftBanner auto={base({ status: 'done', allies: [svenId] })} allies={[svenId]} heroData={HERO_DATA} team="radiant" />);
   expect(screen.getByText('detected ✓')).toBeInTheDocument();
   expect(screen.getByText('Allies')).toBeInTheDocument();
   expect(screen.getByAltText('Sven')).toBeInTheDocument();
+  expect(screen.getByText('radiant')).toBeInTheDocument();
 });
 
 it('points to manual pick when there is no OpenAI key', () => {
-  render(<AutoDraftBanner auto={base({ status: 'no-key' })} allies={[]} heroData={HERO_DATA} />);
+  render(<AutoDraftBanner auto={base({ status: 'no-key' })} allies={[]} heroData={HERO_DATA} team={null} />);
   expect(screen.getByText(/needs an OpenAI key/)).toBeInTheDocument();
 });

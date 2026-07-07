@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { callOpenAi } from './openai';
 
 export interface CoachRouteOptions {
   apiKey: string | null;
@@ -22,11 +23,9 @@ export interface CoachRouteOptions {
 const DEFAULT_ALLOW_ORIGINS = ['http://127.0.0.1:5273', 'http://localhost:5273'];
 
 const SYSTEM_PROMPT =
-  'You are a Dota 2 coach. Use the JSON game context. Answer in 1–2 sentences, 40 words max: the single most important action right now and a brief why. No preamble, no lists, no restating the question. Name items/abilities plainly.';
-
-interface ChatCompletionResponse {
-  choices?: { message?: { content?: unknown } }[];
-}
+  'You are NeuroFocus Intelligence, a Dota 2 coach. Use the JSON game context (hero, clock, enemies, threat flags, deterministic item advice, tips). ' +
+  'Answer in 2–4 sentences, 120 words max: the single most important action right now, why it matters against THIS enemy lineup, and one follow-up condition to watch for. ' +
+  'Be specific — name items, abilities, timings and map positions plainly. No preamble, no lists, no restating the question.';
 
 export function registerCoachRoute(app: FastifyInstance, opts: CoachRouteOptions): void {
   // allowOrigin may be a comma-separated list (e.g. COACH_ALLOW_ORIGIN).
@@ -66,39 +65,22 @@ export function registerCoachRoute(app: FastifyInstance, opts: CoachRouteOptions
       return reply.code(501).send({ error: 'no-key' });
     }
 
-    const doFetch = opts.fetchImpl ?? fetch;
-    try {
-      const res = await doFetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: opts.model ?? 'gpt-4o',
-          temperature: 0.4,
-          max_tokens: 220,
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: `${question}\n\nContext:\n${JSON.stringify(body.context ?? null).slice(0, 4000)}` },
-          ],
-        }),
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!res.ok) {
-        console.error(`[coach] OpenAI returned ${res.status} — check the API key/quota.`);
-        return reply.code(502).send({ error: 'upstream', status: res.status });
-      }
-      const data = (await res.json()) as ChatCompletionResponse;
-      const content = data.choices?.[0]?.message?.content;
-      const answer = typeof content === 'string' ? content.trim() : '';
-      if (answer === '') {
-        return reply.code(502).send({ error: 'upstream' });
-      }
-      return reply.code(200).send({ answer });
-    } catch (err) {
-      console.error(`[coach] OpenAI request failed: ${err instanceof Error ? err.message : 'unknown error'}`);
-      return reply.code(502).send({ error: 'upstream' });
+    const result = await callOpenAi({
+      apiKey,
+      model: opts.model,
+      instructions: SYSTEM_PROMPT,
+      input: `${question}\n\nContext:\n${JSON.stringify(body.context ?? null).slice(0, 12_000)}`,
+      reasoningEffort: 'medium',
+      maxOutputTokens: 1500,
+      timeoutMs: 25_000,
+      fetchImpl: opts.fetchImpl,
+    });
+    if (!result.ok) {
+      console.error(`[coach] OpenAI request failed${result.status !== undefined ? ` (${result.status})` : ''} — check the API key/quota.`);
+      return reply.code(502).send(
+        result.status !== undefined ? { error: 'upstream', status: result.status } : { error: 'upstream' },
+      );
     }
+    return reply.code(200).send({ answer: result.text });
   });
 }

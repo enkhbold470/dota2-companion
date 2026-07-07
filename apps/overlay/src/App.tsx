@@ -183,7 +183,7 @@ export default function App() {
       )}
 
       <Panel style={{ display: 'flex', flexDirection: 'column', gap: t.space.md }}>
-        <AutoDraftBanner auto={auto} allies={allies} heroData={HERO_DATA} />
+        <AutoDraftBanner auto={auto} allies={allies} heroData={HERO_DATA} team={state?.team ?? null} />
         <HeroAnalyzer
           heroData={HERO_DATA}
           ownHeroId={heroId}

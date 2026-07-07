@@ -55,7 +55,7 @@ export interface FocusSession {
   armCapture: () => Promise<void>;
   disarmCapture: () => void;
   /** Grab one still JPEG data-URL from the armed capture (null if not armed). */
-  grabFrame: () => Promise<string | null>;
+  grabFrame: (mode?: 'full' | 'draftBar') => Promise<string | null>;
   /** Start/stop recording automatically at the game horn / game end. */
   autoRecord: boolean;
   setAutoRecord: (v: boolean) => void;
@@ -151,7 +151,7 @@ export function useFocusSession(state: NormalizedState | null): FocusSession {
 
   const armCapture = useCallback(async () => { await screenRec.current!.arm(); }, []);
   const disarmCapture = useCallback(() => { screenRec.current!.disarm(); }, []);
-  const grabFrame = useCallback(() => screenRec.current!.grabFrame(), []);
+  const grabFrame = useCallback((mode?: 'full' | 'draftBar') => screenRec.current!.grabFrame(mode), []);
   const setAutoRecord = useCallback((v: boolean) => {
     setAutoRecordState(v);
     try { localStorage.setItem(AUTO_RECORD_KEY, v ? '1' : '0'); } catch { /* ignore */ }

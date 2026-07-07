@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { callOpenAi, type TextFormat } from './openai';
 
 export interface VisionRouteOptions {
   apiKey: string | null;
@@ -19,13 +20,29 @@ const SYSTEM_PROMPT =
 
 // Draft mode: read ALL ten heroes and split them by side, so the client can map
 // allies vs enemies using which team it is (from GSI). Radiant sits left of the
-// central clock/score in the top bar, Dire right.
+// central clock/score in the top bar, Dire right. The client sends a cropped
+// strip of the top hero bar (not the full screen).
 const DRAFT_SYSTEM_PROMPT =
-  'You read the Dota 2 top hero bar / scoreboard and list every hero, split by team. ' +
-  'Return JSON only: {"radiant":["Official Hero Name", ...],"dire":[...]} with exact English names ' +
-  '(e.g. "Anti-Mage", "Queen of Pain", "Nature\'s Prophet"). Radiant is the LEFT side of the central ' +
-  'clock/score in the top bar (green side of the scoreboard); Dire is the RIGHT side (red side). ' +
-  'At most 5 per team, each once, only heroes you can clearly see. Unseen side → empty array.';
+  'You read a cropped strip of the Dota 2 top hero bar (or a scoreboard screenshot) and list every hero, split by team. ' +
+  'The top bar shows up to 5 Radiant hero portraits on the LEFT of the central clock/score and up to 5 Dire portraits on the RIGHT ' +
+  '(on a scoreboard, Radiant is the green group, Dire the red group). ' +
+  'Use exact official English names, e.g. "Anti-Mage", "Queen of Pain", "Nature\'s Prophet", "Outworld Destroyer". ' +
+  'At most 5 per team, each once, only heroes you can clearly identify. Unseen side → empty array.';
+
+const DRAFT_SCHEMA: TextFormat = {
+  type: 'json_schema',
+  name: 'draft_sides',
+  strict: true,
+  schema: {
+    type: 'object',
+    properties: {
+      radiant: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+      dire: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    },
+    required: ['radiant', 'dire'],
+    additionalProperties: false,
+  },
+};
 
 function userInstruction(ownHero: string | null): string {
   if (!ownHero) return 'Identify every Dota 2 hero you can clearly see.';
@@ -36,10 +53,6 @@ function userInstruction(ownHero: string | null): string {
     `Never include ${ownHero} or ${ownHero}'s teammates. ` +
     `If you truly cannot tell the teams apart, return every hero except ${ownHero}.`
   );
-}
-
-interface ChatCompletionResponse {
-  choices?: { message?: { content?: unknown } }[];
 }
 
 function parseHeroes(content: unknown): string[] {
@@ -106,45 +119,37 @@ export function registerVisionRoute(app: FastifyInstance, opts: VisionRouteOptio
     const draftMode = body.mode === 'draft';
     const ownHero = typeof body.ownHero === 'string' && body.ownHero.trim() !== '' ? body.ownHero.trim() : null;
 
-    const doFetch = opts.fetchImpl ?? fetch;
-    try {
-      const res = await doFetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: opts.model ?? 'gpt-4o',
-          temperature: 0,
-          max_tokens: 300,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: draftMode ? DRAFT_SYSTEM_PROMPT : SYSTEM_PROMPT },
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: draftMode
-                  ? 'List every hero in the top bar / scoreboard, split into radiant (left) and dire (right).'
-                  : userInstruction(ownHero) },
-                { type: 'image_url', image_url: { url: image } },
-              ],
-            },
+    const result = await callOpenAi({
+      apiKey,
+      model: opts.model,
+      instructions: draftMode ? DRAFT_SYSTEM_PROMPT : SYSTEM_PROMPT,
+      input: [
+        {
+          role: 'user',
+          content: [
+            { type: 'input_text', text: draftMode
+              ? 'List every hero in the top bar / scoreboard, split into radiant (left) and dire (right).'
+              : userInstruction(ownHero) },
+            // 'original' keeps the hero-bar strip at full fidelity — the
+            // portraits are small and spatially ordered, exactly what the
+            // downscaled tiling modes lose.
+            { type: 'input_image', image_url: image, detail: 'original' },
           ],
-        }),
-        signal: AbortSignal.timeout(25_000),
-      });
-      if (!res.ok) {
-        console.error(`[vision] OpenAI returned ${res.status} — check the API key/quota.`);
-        return reply.code(502).send({ error: 'upstream', status: res.status });
-      }
-      const data = (await res.json()) as ChatCompletionResponse;
-      const content = data.choices?.[0]?.message?.content;
-      if (draftMode) return reply.code(200).send(parseDraft(content));
-      return reply.code(200).send({ heroes: parseHeroes(content) });
-    } catch (err) {
-      console.error(`[vision] OpenAI request failed: ${err instanceof Error ? err.message : 'unknown error'}`);
-      return reply.code(502).send({ error: 'upstream' });
+        },
+      ],
+      reasoningEffort: 'low',
+      maxOutputTokens: 1200,
+      textFormat: draftMode ? DRAFT_SCHEMA : { type: 'json_object' },
+      timeoutMs: 35_000,
+      fetchImpl: opts.fetchImpl,
+    });
+    if (!result.ok) {
+      console.error(`[vision] OpenAI request failed${result.status !== undefined ? ` (${result.status})` : ''} — check the API key/quota.`);
+      return reply.code(502).send(
+        result.status !== undefined ? { error: 'upstream', status: result.status } : { error: 'upstream' },
+      );
     }
+    if (draftMode) return reply.code(200).send(parseDraft(result.text));
+    return reply.code(200).send({ heroes: parseHeroes(result.text) });
   });
 }

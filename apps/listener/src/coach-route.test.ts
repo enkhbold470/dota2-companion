@@ -12,7 +12,7 @@ function buildApp(opts: CoachRouteOptions): FastifyInstance {
 
 function okCompletion(content: string): Response {
   return new Response(
-    JSON.stringify({ choices: [{ message: { content } }] }),
+    JSON.stringify({ output: [{ type: 'message', content: [{ type: 'output_text', text: content }] }] }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   );
 }
@@ -58,18 +58,19 @@ describe('coach route', () => {
     const call = fetchMock.mock.calls[0];
     expect(call).toBeDefined();
     const [url, init] = call!;
-    expect(url).toBe('https://api.openai.com/v1/chat/completions');
+    expect(url).toBe('https://api.openai.com/v1/responses');
     const headers = init?.headers as Record<string, string>;
     expect(headers['authorization']).toBe('Bearer sk-test');
     const sent = JSON.parse(String(init?.body)) as {
-      model: string; max_tokens: number; temperature: number;
-      messages: { role: string; content: string }[];
+      model: string; max_output_tokens: number; instructions: string;
+      reasoning: { effort: string }; input: string;
     };
-    expect(sent.model).toBe('gpt-4o');
-    expect(sent.max_tokens).toBe(220);
-    expect(sent.temperature).toBe(0.4);
-    expect(sent.messages[1]?.content).toContain('What should I buy?');
-    expect(sent.messages[1]?.content).toContain('"gold":4200');
+    expect(sent.model).toBe('gpt-5.4');
+    expect(sent.max_output_tokens).toBe(1500);
+    expect(sent.reasoning).toEqual({ effort: 'medium' });
+    expect(sent.instructions).toContain('NeuroFocus Intelligence');
+    expect(sent.input).toContain('What should I buy?');
+    expect(sent.input).toContain('"gold":4200');
     await app.close();
   });
 

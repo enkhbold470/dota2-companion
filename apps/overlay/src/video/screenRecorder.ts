@@ -1,5 +1,5 @@
 import { VIDEO_START_URL, VIDEO_CHUNK_URL, VIDEO_FINISH_URL } from '../config';
-import { streamToDataUrl } from './frame';
+import { streamToDataUrl, DRAFT_BAR_OPTIONS } from './frame';
 
 /**
  * Screen capture for the focus review: records gameplay while an EEG session
@@ -41,17 +41,21 @@ export class ScreenRecorder {
 
   /**
    * Grab one still JPEG data-URL from the armed capture (for the auto draft scan).
-   * Returns null when not armed — capture must be armed via a user gesture first.
+   * `'draftBar'` crops to the top hero-bar band at full resolution so the vision
+   * model sees readable portraits. Returns null when not armed — capture must be
+   * armed via a user gesture first.
    */
-  async grabFrame(): Promise<string | null> {
+  async grabFrame(mode: 'full' | 'draftBar' = 'full'): Promise<string | null> {
     if (!this.stream) return null;
-    return streamToDataUrl(this.stream);
+    return streamToDataUrl(this.stream, mode === 'draftBar' ? DRAFT_BAR_OPTIONS : undefined);
   }
 
   async arm(): Promise<void> {
     if (this.stream) return;
     const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: { ideal: 30 }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      // 1080p so the draft-bar crop keeps hero portraits legible; the recorder's
+      // bitrate cap (below) keeps review-video disk use unchanged.
+      video: { frameRate: { ideal: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
       audio: false,
     });
     // The user can end sharing from the browser/OS chrome at any time.

@@ -10,11 +10,15 @@ function buildApp(opts: VisionRouteOptions): FastifyInstance {
 
 const TINY_PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC';
 
-function okHeroes(heroes: unknown): Response {
+function okJson(payload: unknown): Response {
   return new Response(
-    JSON.stringify({ choices: [{ message: { content: JSON.stringify({ heroes }) } }] }),
+    JSON.stringify({ output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(payload) }] }] }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   );
+}
+
+function okHeroes(heroes: unknown): Response {
+  return okJson({ heroes });
 }
 
 describe('vision route', () => {
@@ -45,11 +49,13 @@ describe('vision route', () => {
     const init = fetchMock.mock.calls[0]?.[1];
     const sent = JSON.parse(String(init?.body)) as {
       model?: string;
-      messages?: { role: string; content: unknown }[];
+      input?: { role: string; content: { type: string; image_url?: string; detail?: string }[] }[];
     };
-    expect(sent.model).toBe('gpt-4o');
-    // the image data URL rides along in the user message content
-    expect(JSON.stringify(sent.messages?.[1]?.content)).toContain('data:image/png');
+    expect(sent.model).toBe('gpt-5.4');
+    // the image data URL rides along in the user input at original detail
+    const imagePart = sent.input?.[0]?.content.find((p) => p.type === 'input_image');
+    expect(imagePart?.image_url).toContain('data:image/png');
+    expect(imagePart?.detail).toBe('original');
     await app.close();
   });
 
@@ -61,21 +67,20 @@ describe('vision route', () => {
     await app.close();
   });
 
-  it('draft mode returns heroes split by side and uses the draft prompt', async () => {
-    const draftResponse = new Response(
-      JSON.stringify({ choices: [{ message: { content: JSON.stringify({
-        radiant: ['Lion', 'Sven'], dire: ['Anti-Mage', 'Tiny', ''],
-      }) } }] }),
-      { status: 200, headers: { 'content-type': 'application/json' } },
-    );
-    const fetchMock = vi.fn((_i: RequestInfo | URL, _init?: RequestInit) => Promise.resolve(draftResponse));
+  it('draft mode returns heroes split by side, uses the draft prompt and a strict schema', async () => {
+    const fetchMock = vi.fn((_i: RequestInfo | URL, _init?: RequestInit) =>
+      Promise.resolve(okJson({ radiant: ['Lion', 'Sven'], dire: ['Anti-Mage', 'Tiny', ''] })));
     const app = buildApp({ apiKey: 'sk-test', fetchImpl: fetchMock as unknown as typeof fetch });
     const res = await app.inject({ method: 'POST', url: '/vision', payload: { image: TINY_PNG, mode: 'draft' } });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ radiant: ['Lion', 'Sven'], dire: ['Anti-Mage', 'Tiny'] });
 
-    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages?: { content: unknown }[] };
-    expect(String(sent.messages?.[0]?.content)).toContain('split by team');
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      instructions?: string; text?: { format?: { type?: string; name?: string } };
+    };
+    expect(sent.instructions).toContain('split by team');
+    expect(sent.text?.format?.type).toBe('json_schema');
+    expect(sent.text?.format?.name).toBe('draft_sides');
     await app.close();
   });
 
