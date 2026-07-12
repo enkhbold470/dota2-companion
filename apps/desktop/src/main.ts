@@ -7,8 +7,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync, appen
 import { join, dirname } from 'node:path';
 import { buildServer } from '../../listener/src/server';
 import { Hub } from '../../listener/src/hub';
+import { downloadAndSwap, bundleFromExecPath, type MacUpdateInfo } from './mac-update';
 
 const PORT = Number(process.env.PORT ?? 53000);
+// Must match publish: in electron-builder.yml (mac-update.ts fetches assets from here).
+const RELEASE_DOWNLOAD_BASE = 'https://github.com/enkhbold470/dota2-companion/releases/download';
+const RELEASES_PAGE = 'https://github.com/enkhbold470/dota2-companion/releases/latest';
 
 function configDir(): string {
   const dir = app.getPath('userData');
@@ -95,6 +99,50 @@ function setUpdaterState(state: string, info?: string): void {
   updaterState = { state, info: info ?? null };
 }
 
+// macOS install path. Electron's Squirrel.Mac validates an update against the
+// RUNNING app's code-signature designated requirement; our ad-hoc signature is a
+// per-build cdhash, so Squirrel rejects every update ("Code signature … did not
+// pass validation"). Instead we download + sha512-verify the zip ourselves and
+// swap the bundle (see mac-update.ts) — never call autoUpdater.downloadUpdate()
+// on darwin. Falls back to the releases page if anything goes wrong.
+async function runMacUpdate(win: BrowserWindow, info: MacUpdateInfo, dir: string): Promise<void> {
+  const fallback = async (why: string): Promise<void> => {
+    setUpdaterState('error', why.split('\n')[0]!.slice(0, 140));
+    try {
+      appendFileSync(join(dir, 'updater.log'), `${new Date().toISOString()} mac-update: ${why}\n`, 'utf8');
+    } catch { /* non-fatal */ }
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning', buttons: ['Open download page', 'Later'], defaultId: 0, cancelId: 1,
+      title: 'Update failed',
+      message: 'Automatic update didn’t work.',
+      detail: 'Download the new version from the releases page and drag it into Applications.',
+    });
+    if (response === 0) void shell.openExternal(RELEASES_PAGE);
+  };
+
+  const bundlePath = bundleFromExecPath(process.execPath);
+  if (!bundlePath) return fallback('not running from an .app bundle');
+  try {
+    setUpdaterState('downloading', '0%');
+    await downloadAndSwap({
+      info, bundlePath,
+      workDir: join(app.getPath('temp'), 'nf-mac-update'),
+      releaseBase: RELEASE_DOWNLOAD_BASE,
+      onProgress: (p) => setUpdaterState('downloading', `${p}%`),
+    });
+    setUpdaterState('downloaded', info.version);
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'info', buttons: ['Restart now', 'On next launch'], defaultId: 0, cancelId: 1,
+      title: 'Update ready',
+      message: `Version ${info.version} is installed.`,
+      detail: 'It’s already in place — restarting now switches to it, otherwise the next launch will.',
+    });
+    if (response === 0) { app.relaunch(); app.exit(0); }
+  } catch (err) {
+    await fallback(err instanceof Error ? err.message : String(err));
+  }
+}
+
 // In-app software updates from GitHub releases. The user always chooses — we never
 // download or install without a click. Best-effort: an update check must never block
 // or crash the app (offline, rate-limited, unsigned dev build all fail quiet).
@@ -114,7 +162,15 @@ function setupAutoUpdate(win: BrowserWindow, dir: string): void {
       title: 'Update available',
       message: `Dota 2 NeuroSync ${info.version} is available.`,
       detail: 'Download it now? You can keep using the app while it downloads.',
-    }).then(({ response }) => { if (response === 0) void autoUpdater.downloadUpdate(); });
+    }).then(({ response }) => {
+      if (response !== 0) return;
+      if (process.platform === 'darwin') {
+        const files = (info.files ?? []).map((f) => ({ url: f.url, sha512: f.sha512 ?? '' }));
+        void runMacUpdate(win, { version: info.version, files }, dir);
+      } else {
+        void autoUpdater.downloadUpdate();
+      }
+    });
   });
 
   autoUpdater.on('update-downloaded', (info) => {
