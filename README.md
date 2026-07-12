@@ -34,10 +34,8 @@ machine.
 
 ## After you play — NeuroFocus Studio
 
-Close the match and the app becomes a full-screen dashboard: your last game's
-complete stat sheet (K/D/A, last hits & denies, GPM/XPM, damage, healing, final
-items) and recent-match history via OpenDota — plus **TraceLog**, where your
-recorded session meets the screen recording:
+Close the match and the app becomes **TraceLog**, where your recorded session
+meets the screen recording:
 
 <p align="center">
   <img src="docs/flowstate.svg" alt="TraceLog session review: FlowState and stress lines across a match; a tilt spiral after a double death drops focus from 68 to 31, with kill and death markers on the timeline" width="100%">
@@ -50,29 +48,23 @@ the video.
 
 ## Get started
 
-1. **[Download the app](https://github.com/enkhbold470/dota2-companion/releases/latest)**
-   (Windows installer / macOS dmg) — it generates your GSI config and installs
-   it into Dota automatically when it can find your Steam folder.
-
-   **macOS:** the build isn't notarized yet, so after dragging the app to
-   Applications, clear the quarantine flag once:
+1. **[Download the app](https://github.com/enkhbold470/dota2-companion/releases/latest)**.
+   On macOS, run this once after dragging it to Applications (not notarized yet):
 
    ```bash
    xattr -dr com.apple.quarantine "/Applications/Dota 2 NeuroSync.app"
    ```
 
-   or use **System Settings → Privacy & Security → Open Anyway**. Full
-   walkthrough (incl. Windows SmartScreen): **[Installation guide](docs/INSTALL.md)**.
-2. Add your OpenAI key in **Settings ⚙** to light up the AI features (item
-   builds, vision, coach, deep analysis). Everything else works without it.
-3. Play. Arm screen capture when prompted at draft — that powers both the auto
-   hero detection and the video-synced review.
+2. **Open it.** It sets up Dota's GSI config for you — restart Dota once.
+3. **Play.** Optional: add an OpenAI key in **Settings ⚙** for the AI features,
+   and arm screen capture at draft for auto hero detection + video review.
+
+Stuck? **[Installation guide](docs/INSTALL.md)**.
 
 ```
 Dota 2 ──GSI──▶ local listener (:53000) ──WebSocket──▶ overlay / Studio
                      │                                      ▲
-                     ├──▶ OpenAI gpt-5.4 (only on your click)│
-                     └──▶ OpenDota (post-game stats, cached)─┘
+                     └──▶ OpenAI gpt-5.4 (only on your click)┘
 ```
 
 <details>
@@ -112,7 +104,7 @@ pnpm gen-hero-builds                     # regenerate per-hero fun pools (needs 
 ```
 
 The engines run on ~250 KB of pruned static data (damage types, BKB pierce,
-dispellability, item costs, OpenDota item-id map). `hero-builds.json` is an
+dispellability, item costs). `hero-builds.json` is an
 LLM-curated fun pool per hero, validated against the item data. Both are
 checked in; Settings shows which game patch the data was built from and flags
 when the live patch is newer.
@@ -127,9 +119,8 @@ when the live patch is newer.
   name matching, EEG DSP + FlowState scoring, session format, deep-analysis
   context builder. No I/O, fully unit-tested.
 - `apps/listener` — Fastify GSI receiver + WebSocket fan-out, the gpt-5.4
-  routes (`/coach`, `/item-build`, `/vision`, `/analysis`), the `/opendota`
-  caching proxy, and local recording persistence. Serves the built overlay in
-  prod (single process, single port).
+  routes (`/coach`, `/item-build`, `/vision`, `/analysis`), and local recording
+  persistence. Serves the built overlay in prod (single process, single port).
 - `apps/overlay` — React/Vite UI: the live coaching column + NeuroFocus Studio.
   A browser page, not an injected overlay.
 - `apps/desktop` — Electron wrapper → one-click installers with auto-update.

@@ -24,7 +24,7 @@ import { ReviewPanel } from './components/ReviewPanel';
 import { LiveFocusStrip } from './components/LiveFocusStrip';
 import { SettingsPanel, SETUP_DONE_KEY } from './components/SettingsPanel';
 import { StudioDashboard } from './components/studio/StudioDashboard';
-import { resolveMode, LAST_MATCH_KEY, type ModeOverride } from './studioMode';
+import { resolveMode, type ModeOverride } from './studioMode';
 
 const HERO_OPTIONS: HeroOption[] = Object.entries(HERO_DATA)
   .map(([id, h]) => ({ id: Number(id), localized_name: h.localizedName, name: h.name }))
@@ -41,18 +41,6 @@ export default function App() {
 
   // Live coaching column during a game; NeuroFocus Studio between games.
   const mode = resolveMode(state?.phase ?? null, modeOverride);
-
-  // Remember the last live match so Studio can show it after Dota closes.
-  const matchIdForMemory = state?.matchId ?? null;
-  const accountIdForMemory = state?.accountId ?? null;
-  useEffect(() => {
-    if (!matchIdForMemory || !accountIdForMemory) return;
-    try {
-      localStorage.setItem(LAST_MATCH_KEY, JSON.stringify({
-        matchId: matchIdForMemory, accountId: accountIdForMemory, seenAtMs: Date.now(),
-      }));
-    } catch { /* ignore */ }
-  }, [matchIdForMemory, accountIdForMemory]);
 
   // Enemies the user hand-picked (picker/paste) must never be auto-overwritten
   // for the current match. Reset when the match id changes.
@@ -193,7 +181,7 @@ export default function App() {
         >⚙</button>
       </header>
 
-      {mode === 'studio' && <StudioDashboard state={state} focus={focus} />}
+      {mode === 'studio' && <StudioDashboard focus={focus} />}
 
       {mode === 'live' && <>
       <LiveFocusStrip session={focus} />

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeGsi, gamePhase, steamIdToAccountId } from './normalize';
+import { normalizeGsi, gamePhase } from './normalize';
 import type { GsiPayload } from './types';
 
 const full: GsiPayload = {
@@ -39,15 +39,6 @@ describe('normalizeGsi', () => {
     expect(s.economy.netWorth).toBe(5200);
     expect(s.economy.denies).toBe(12);
     expect(s.steamId).toBe('76561198012345678');
-    // 76561198012345678 - 76561197960265728 = 52079950
-    expect(s.accountId).toBe('52079950');
-  });
-
-  it('steamIdToAccountId converts without float precision loss and rejects junk', () => {
-    expect(steamIdToAccountId('76561198012345678')).toBe('52079950');
-    expect(steamIdToAccountId(undefined)).toBeNull();
-    expect(steamIdToAccountId('')).toBeNull();
-    expect(steamIdToAccountId('not-a-number')).toBeNull();
   });
 
   it('surfaces game_state, derived phase, and team', () => {

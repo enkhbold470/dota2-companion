@@ -1,9 +1,8 @@
 /**
  * NeuroFocus Intelligence deep analysis — the pure context builder. Takes a
  * recorded session (1 Hz FlowState timeline + match events) and boils it down
- * to an LLM-sized summary: 15 s focus buckets, the event log, aggregates, and
- * an optional slice of the OpenDota match. The listener's /analysis route sends
- * this to the model; nothing here does I/O.
+ * to an LLM-sized summary: 15 s focus buckets, the event log, and aggregates.
+ * The listener's /analysis route sends this to the model; nothing here does I/O.
  */
 import type { RecordedSession } from './session';
 import { findCrash } from './eeg';
@@ -37,16 +36,11 @@ export interface AnalysisContext {
   buckets: FocusBucket[];
   /** Full event log: kill/death/assist/level_up/battle/day/night/game_*. */
   events: { t: number; kind: string; value?: number }[];
-  /** Optional OpenDota slice: team gold advantage every 2 minutes (radiant-positive). */
-  goldAdvantage?: { t: number; gold: number }[];
 }
 
 const round = (n: number): number => Math.round(n * 10) / 10;
 
-/** Minimal shape we read off an OpenDota match payload. */
-export interface OdMatchSlice { radiant_gold_adv?: number[] }
-
-export function buildAnalysisContext(session: RecordedSession, odMatch?: OdMatchSlice): AnalysisContext {
+export function buildAnalysisContext(session: RecordedSession): AnalysisContext {
   const points = session.focus;
 
   const buckets: FocusBucket[] = [];
@@ -99,14 +93,6 @@ export function buildAnalysisContext(session: RecordedSession, odMatch?: OdMatch
     buckets,
     events: session.events.map((e) => (e.value !== undefined ? { t: e.t, kind: e.kind, value: e.value } : { t: e.t, kind: e.kind })),
   };
-
-  // radiant_gold_adv is per-minute; sample every 2 min to stay compact.
-  const adv = odMatch?.radiant_gold_adv;
-  if (Array.isArray(adv) && adv.length > 0) {
-    context.goldAdvantage = adv
-      .map((gold, minute) => ({ t: minute * 60, gold }))
-      .filter((_, i) => i % 2 === 0);
-  }
 
   // Never exceed the budget: shed bucket resolution before anything else.
   while (JSON.stringify(context).length > ANALYSIS_CONTEXT_MAX_CHARS && context.buckets.length > 40) {

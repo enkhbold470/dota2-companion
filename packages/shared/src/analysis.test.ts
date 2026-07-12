@@ -42,11 +42,6 @@ describe('buildAnalysisContext', () => {
     expect(ctx.events).toContainEqual({ t: 90, kind: 'level_up', value: 12 });
   });
 
-  it('attaches a 2-minute gold-advantage slice when an OpenDota match is given', () => {
-    const ctx = buildAnalysisContext(session(), { radiant_gold_adv: [0, 200, 500, 900, 1400] });
-    expect(ctx.goldAdvantage).toEqual([{ t: 0, gold: 0 }, { t: 120, gold: 500 }, { t: 240, gold: 1400 }]);
-  });
-
   it('stays under the serialized budget for a very long session', () => {
     const points = Array.from({ length: 4 * 3600 }, (_, i) => point(i, 50 + (i % 20)));
     const ctx = buildAnalysisContext(session({ focus: points, durationSec: 4 * 3600 }));

@@ -17,7 +17,6 @@ function makeState(patch: StatePatch = {}): NormalizedState {
     phase: 'in_progress',
     team: 'radiant',
     steamId: null,
-    accountId: null,
     paused: false,
     clock: 600,
     isDay: true,

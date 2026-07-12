@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react';
-import {
-  buildAnalysisContext, formatClock,
-  type RecordedSession, type OdMatchSlice,
-} from '@dc/shared';
+import { buildAnalysisContext, formatClock, type RecordedSession } from '@dc/shared';
 import { t, btn, SectionLabel } from '../theme';
-import { ANALYSIS_URL, OPENDOTA_MATCH_URL } from '../config';
+import { ANALYSIS_URL } from '../config';
 
 export interface DeepAnalysis {
   summary: string;
@@ -51,16 +48,7 @@ export function DeepAnalysisPanel({ session, sessionName, onSeek }: {
   const run = async (): Promise<void> => {
     setStatus('running');
     try {
-      // Best-effort OpenDota enrichment — the gold curve helps the model tie
-      // focus dips to the game swinging, but analysis works without it.
-      let odMatch: OdMatchSlice | undefined;
-      if (session.matchId) {
-        try {
-          const odRes = await fetch(`${OPENDOTA_MATCH_URL}/${session.matchId}`);
-          if (odRes.status === 200) odMatch = (await odRes.json()) as OdMatchSlice;
-        } catch { /* enrichment only */ }
-      }
-      const context = buildAnalysisContext(session, odMatch);
+      const context = buildAnalysisContext(session);
       const res = await fetch(ANALYSIS_URL, {
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ context }),

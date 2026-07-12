@@ -94,8 +94,6 @@ export interface NormalizedState {
   team: Team | null;
   /** Raw 64-bit Steam id string from GSI (null pre-connect / spectating oddities). */
   steamId: string | null;
-  /** 32-bit account id (low 32 bits of steamId) — the OpenDota /players key. */
-  accountId: string | null;
   paused: boolean;
   clock: number | null;
   isDay: boolean | null;
