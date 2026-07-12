@@ -9,7 +9,7 @@
   <img src="https://img.shields.io/badge/EEG-175%20SPS-e5757b" alt="EEG 175 SPS">
 </p>
 
-**Sync your brain with your game.** NeuroFocus is a Dota 2 companion that coaches
+**Sync your brain with your game.** **Dota 2 NeuroSync** by NeuroFocus coaches
 you live while you play — and, with a NeuroFocus EEG headset, records your
 **FlowState** (focus & stress) on top of every kill, death and teamfight, then
 tells you exactly *where* your mental game broke and what to train next.
@@ -51,8 +51,18 @@ the video.
 ## Get started
 
 1. **[Download the app](https://github.com/enkhbold470/dota2-companion/releases/latest)**
-   (Windows installer / macOS) — it generates your GSI config and installs it
-   into Dota automatically when it can find your Steam folder.
+   (Windows installer / macOS dmg) — it generates your GSI config and installs
+   it into Dota automatically when it can find your Steam folder.
+
+   **macOS:** the build isn't notarized yet, so after dragging the app to
+   Applications, clear the quarantine flag once:
+
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/Dota 2 NeuroSync.app"
+   ```
+
+   or use **System Settings → Privacy & Security → Open Anyway**. Full
+   walkthrough (incl. Windows SmartScreen): **[Installation guide](docs/INSTALL.md)**.
 2. Add your OpenAI key in **Settings ⚙** to light up the AI features (item
    builds, vision, coach, deep analysis). Everything else works without it.
 3. Play. Arm screen capture when prompted at draft — that powers both the auto

@@ -112,7 +112,7 @@ function setupAutoUpdate(win: BrowserWindow, dir: string): void {
     void dialog.showMessageBox(win, {
       type: 'info', buttons: ['Download & install', 'Later'], defaultId: 0, cancelId: 1,
       title: 'Update available',
-      message: `Dota 2 Companion ${info.version} is available.`,
+      message: `Dota 2 NeuroSync ${info.version} is available.`,
       detail: 'Download it now? You can keep using the app while it downloads.',
     }).then(({ response }) => { if (response === 0) void autoUpdater.downloadUpdate(); });
   });
@@ -185,7 +185,7 @@ async function start(): Promise<void> {
   const win = new BrowserWindow({
     width: 460,
     height: 920,
-    title: `Dota 2 Companion v${app.getVersion()}`,
+    title: `Dota 2 NeuroSync v${app.getVersion()}`,
     autoHideMenuBar: true,
     // Match the overlay's app background so the window never flashes white
     // before the page paints (and around the content while loading).
@@ -230,7 +230,7 @@ async function start(): Promise<void> {
 }
 
 app.whenReady().then(start).catch((err) => {
-  dialog.showErrorBox('Dota 2 Companion failed to start', String(err instanceof Error ? err.stack : err));
+  dialog.showErrorBox('Dota 2 NeuroSync failed to start', String(err instanceof Error ? err.stack : err));
   app.quit();
 });
 app.on('window-all-closed', () => app.quit());

@@ -1,4 +1,4 @@
-Dota 2 Companion — by NeuroFocus (https://neurofocus.dev)
+Dota 2 NeuroSync — by NeuroFocus (https://neurofocus.dev)
 
 READ-ONLY, ADVISORY-ONLY. This app consumes only Valve's official Game State
 Integration (GSI). It never reads game memory, never injects code, and never

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+apps/desktop/release/
+apps/desktop/package-lock.json
 *.log
 .env
 .gsi-token

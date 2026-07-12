@@ -28,8 +28,10 @@ jobs:
     permissions:
       contents: write
     env:
-      # Build unsigned — we have no Apple/Windows signing cert. Stops electron-builder
-      # from trying (and hanging on) auto-discovered identities.
+      # No Apple/Windows signing cert — stops electron-builder from trying (and
+      # hanging on) auto-discovered identities. The macOS app still gets a valid
+      # AD-HOC signature via the afterPack hook (build/mac-adhoc-sign.cjs); without
+      # one, Apple Silicon refuses the app outright as "damaged".
       CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
       - uses: actions/checkout@v4
@@ -67,9 +69,12 @@ jobs:
           path: ${{ matrix.globs }}
 
       # Attach the installer AND the auto-update metadata so electron-updater can
-      # detect and delta-download the next release.
+      # detect and delta-download the next release. The install guide becomes the
+      # release body, so the download page itself explains the Gatekeeper /
+      # SmartScreen steps (both matrix jobs write the same body — idempotent).
       - name: Attach to GitHub release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ matrix.globs }}
+          body_path: docs/INSTALL.md

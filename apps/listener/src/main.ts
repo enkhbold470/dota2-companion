@@ -31,7 +31,7 @@ const app = buildServer({
 app.listen({ host: '127.0.0.1', port })
   .then(() => {
     if (staticDir) {
-      console.log(`Dota 2 Companion running — open http://127.0.0.1:${port} in your browser.`);
+      console.log(`Dota 2 NeuroSync running — open http://127.0.0.1:${port} in your browser.`);
     } else {
       console.log(`GSI listener on http://127.0.0.1:${port} (POST /), overlay WS at ws://127.0.0.1:${port}/ws — run the overlay dev server separately (pnpm overlay).`);
     }

@@ -1,16 +1,19 @@
+# appId is identity, not branding: it keys the NSIS uninstall entry, macOS bundle id,
+# and the userData dir (GSI token, OpenAI key, recordings). Renaming the product must
+# NOT change it, or updates orphan the old install and users lose their config.
 appId: com.enkhbold470.dota2companion
-productName: Dota 2 Companion
-copyright: Read-only, advisory-only. Uses only Valve GSI.
+productName: Dota 2 NeuroSync
+copyright: © NeuroFocus — read-only, advisory-only. Uses only Valve GSI.
 
 directories:
   output: release
 
 # Space-free artifact names. electron-builder writes the filename with hyphens
 # into latest.yml, but GitHub converts spaces in an uploaded asset to dots — so a
-# spaced productName makes the updater look for "Dota-2-Companion-…exe" while the
-# asset is "Dota.2.Companion.…exe" → 404. Naming with hyphens up front keeps the
+# spaced productName makes the updater look for "Dota-2-NeuroSync-…exe" while the
+# asset is "Dota.2.NeuroSync.…exe" → 404. Naming with hyphens up front keeps the
 # built file, latest.yml, and the GitHub asset identical (no spaces to convert).
-artifactName: Dota-2-Companion-${version}-${arch}.${ext}
+artifactName: Dota2-NeuroSync-${version}-${arch}.${ext}
 
 # Auto-update feed. electron-builder writes app-update.yml into the package and a
 # latest.yml alongside the installer; electron-updater reads GitHub releases from here.
@@ -46,22 +49,36 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
-  shortcutName: Dota 2 Companion
+  shortcutName: Dota 2 NeuroSync
   installerSidebar: build/installerSidebar.bmp
   uninstallerSidebar: build/installerSidebar.bmp
   # No arch in the installer name (it's a universal per-user NSIS), and no spaces.
-  artifactName: Dota-2-Companion-Setup-${version}.${ext}
+  artifactName: Dota2-NeuroSync-Setup-${version}.${ext}
 
 mac:
   category: public.app-category.games
-  # Unsigned build (no Apple Developer cert). Gatekeeper will ask the user to
-  # right-click → Open the first time. arm64 = Apple Silicon (M-series).
+  # No Apple Developer cert, so electron-builder's own signing is off — but the app
+  # must NOT ship signature-less: electron-builder edits Info.plist after packing,
+  # which breaks the ad-hoc seal Electron ships with, and Apple Silicon refuses to
+  # launch an invalidly-signed app with "«app» is damaged and can't be opened"
+  # (no Gatekeeper bypass exists for that dialog). afterPack re-signs ad-hoc, which
+  # downgrades the failure to the normal "unidentified developer" warning that
+  # System Settings → Privacy & Security → "Open Anyway" (or xattr -dr
+  # com.apple.quarantine) gets past. Real fix later: Developer ID + notarization.
   identity: null
   target:
     - target: dmg
       arch: arm64
     - target: zip     # zip feeds electron-updater's macOS channel (latest-mac.yml)
       arch: arm64
+  # Do NOT override CFBundleName (e.g. to a shorter menu-bar name): Electron locates
+  # its helper apps ("<CFBundleName> Helper.app") by that key, and electron-builder
+  # names them from productName — a mismatch crashes at launch with "Unable to find
+  # helper app". Keep the short branding in productName itself.
+
+# Ad-hoc signs the packed .app (macOS only; see the `mac:` comment). Runs before
+# the dmg/zip targets are built, so both artifacts carry the valid signature.
+afterPack: build/mac-adhoc-sign.cjs
 
 dmg:
   writeUpdateInfo: true

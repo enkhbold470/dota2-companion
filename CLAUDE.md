@@ -39,6 +39,7 @@ Dota 2 client ──HTTP POST──▶ apps/listener ──WebSocket──▶ ap
 - **`packages/shared`** — all pure logic. Every module (`normalize`, `timers`, `runes`, `roshan`, `economy`, `threats`, `items`, `skills`, `coach`, `format`, `auth`) is a pure function tree with static data passed in as an argument. The overlay and listener both depend on it; static data lives inside it as pre-pruned JSON. No I/O, no framework imports.
 - **`apps/listener`** — Fastify HTTP server. `POST /` receives raw GSI, authenticates via `auth.token` from the payload against `GSI_TOKEN`, calls `normalizeGsi`, and pushes the `NormalizedState` into `Hub` (a tiny latest-value pub/sub). `GET /ws` is the fan-out WebSocket (sends the latest snapshot on connect, then every update). `POST /coach` proxies to OpenAI, gated by `OPENAI_API_KEY`, with CORS restricted to the overlay origin (`http://127.0.0.1:5273` by default; override with `COACH_ALLOW_ORIGIN`) so a random tab can't spend the key. Recording persistence also lives here (the overlay can't write files): `POST /recording` (EEG session JSON), `POST /video/start|chunk|finish` (chunked screen-capture webm), and `GET /recordings` + `GET /recordings/file` (listing via head-parse + Range-capable playback) — all against the local recordings folder.
 - **`apps/overlay`** — React (Vite). `useGsiSocket` maintains a resilient WS to `ws://127.0.0.1:53000/ws` with a 1s reconnect loop. `App.tsx` is the composition root: it derives every panel (timers, economy grade, threat report, item recs, skill readout, coach tips, ask coach) from the incoming `NormalizedState` plus the user-picked enemy heroes and role. Everything below `App.tsx` is a dumb presentational component.
+- **`apps/desktop`** — Electron wrapper (product name **"Dota 2 NeuroSync"**, by NeuroFocus). Deliberately **excluded from the pnpm workspace** (`!apps/desktop` in `pnpm-workspace.yaml`); it gets its own `npm install` so Electron never enters the main lockfile. See "Desktop packaging & releases" below.
 
 ### The hot loop is deterministic on purpose
 
@@ -47,6 +48,16 @@ The coaching engines (`threats.ts`, `items.ts`, `skills.ts`, `coach.ts`) are a r
 ### Static data pipeline
 
 `packages/shared/src/data/{hero-data,ability-data,item-data,data-meta}.json` are **generated artifacts checked in to the repo**. Source is `scripts/gen-coach-data.mjs`, which prunes ~2.5 MB of `dotaconstants` down to ~250 KB by filtering damage/duration attribs, normalizing `bkbPierce`/`dispellable`/`targetTeam` enums, and merging facet-gated abilities into each hero's list (we can't tell which facet the player picked, so all appear). On patch day: `pnpm up dotaconstants && pnpm gen-data`, then commit the diff. Do not hand-edit these JSON files.
+
+### Desktop packaging & releases
+
+`apps/desktop` bundles the listener + built overlay into installers via electron-builder (`npm run dist` inside `apps/desktop`). Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds Windows NSIS + macOS dmg/zip, attaches them plus the `latest*.yml` auto-update feeds to the GitHub release, and uses `docs/INSTALL.md` as the release body (that file is the user-facing installation page — keep it current). Hard-won constraints, all commented in `apps/desktop/electron-builder.yml`:
+
+- **`appId` (`com.enkhbold470.dota2companion`) is identity, not branding** — it keys the NSIS uninstall entry and the userData dir (GSI token, OpenAI key, recordings). Product renames must never change it.
+- **macOS must be ad-hoc signed** even without an Apple cert: electron-builder edits Info.plist after packing, which invalidates the prebuilt Electron's ad-hoc seal, and Apple Silicon then refuses the quarantined app as *"damaged"* (no Gatekeeper bypass). The `afterPack` hook `build/mac-adhoc-sign.cjs` re-signs with `codesign --force --deep --sign -`, downgrading it to the normal warning that `xattr -dr com.apple.quarantine` / "Open Anyway" clears. Real fix (Developer ID + notarization) is still TODO before charging users.
+- **Never override `CFBundleName` via `extendInfo`** (e.g. to shorten the menu-bar name): Electron locates its helpers as `<CFBundleName> Helper.app`, and electron-builder names them from `productName` — a mismatch crashes at launch with "Unable to find helper app".
+- **Artifact names must be space-free** (`Dota2-NeuroSync-…`): GitHub converts spaces in asset names to dots but `latest.yml` keeps hyphens → auto-update 404s.
+- Don't set `nsis.publisherName` — electron-updater would then require Authenticode-signed updates, which an unsigned build fails.
 
 ### Normalization invariants worth knowing
 
